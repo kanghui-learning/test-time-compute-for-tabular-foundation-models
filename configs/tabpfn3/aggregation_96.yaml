@@ -1,0 +1,16 @@
+# TabPFN-3 configuration pool + greedy selection (+67 Elo).
+# 96 configurations sampled with seed 0 from the TabPFN search space (configuration 0 = default),
+# each evaluated with 8-fold out-of-fold predictions at 2 views and on the test split at 8 views;
+# 40 rounds of greedy ensemble selection with replacement on the out-of-fold loss.
+# Per-cell member predictions are written to <eval>/agg_preds/ and costs to agg_cost.jsonl.
+model: tabpfn3-agg
+mode: full
+tag_suffix: aggregation_96
+hyperparameters:
+  aggregation:
+    n_configs: 96
+    seed: 0
+    n_est_val: 2
+    n_est_test: 8
+    val_folds: 8
+    n_iterations: 40

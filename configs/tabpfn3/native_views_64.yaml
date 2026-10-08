@@ -1,0 +1,8 @@
+# Frozen TabPFN-3 averaging 64 native views (V=8 is the released default
+# and the baseline of the aggregation curves).
+model: tabpfn3
+mode: full
+tag_suffix: native_views_64
+hyperparameters:
+  n_estimators: 64
+  auto_scale_n_estimators: false

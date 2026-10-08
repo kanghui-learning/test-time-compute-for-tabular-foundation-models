@@ -1,0 +1,427 @@
+diff --git a/tabfm/src/classifier_and_regressor.py b/tabfm/src/classifier_and_regressor.py
+index a785057..76c6514 100644
+--- a/tabfm/src/classifier_and_regressor.py
++++ b/tabfm/src/classifier_and_regressor.py
+@@ -1793,7 +1793,10 @@ def _predict_step_pytorch(
+ 
+   device = next(model.parameters()).device
+ 
+-  X_t = torch.from_numpy(X_batch).to(device, dtype=torch.float32)
++  # Match the model's parameter dtype instead of hard-coding fp32, so a bf16-cast backbone runs
++  # end-to-end in bf16 (halves activation memory -> large/WIDE datasets fit a single GPU at full
++  # context). Backward-compatible: an fp32 model still gets fp32 inputs. [ttc: TabFMModel bf16]
++  X_t = torch.from_numpy(X_batch).to(device, dtype=next(model.parameters()).dtype)
+   y_t = torch.from_numpy(y_batch).to(device)
+   if y_t.dtype == torch.float64:
+     y_t = y_t.to(torch.float32)
+@@ -1819,7 +1822,7 @@ def _predict_step_pytorch(
+   with torch.no_grad():
+     out_t = model(X_t, y_t, train_size_t, cat_mask=cat_mask_t, d=d_t)
+ 
+-  return out_t.cpu().numpy()
++  return out_t.float().cpu().numpy()  # bf16 -> fp32 before numpy (numpy has no bfloat16) [ttc: TabFMModel bf16]
+ 
+ 
+ # ---------------------------------------------------------------------------
+diff --git a/tabfm/src/pytorch/model.py b/tabfm/src/pytorch/model.py
+index 0accc02..a936b55 100644
+--- a/tabfm/src/pytorch/model.py
++++ b/tabfm/src/pytorch/model.py
+@@ -100,6 +100,19 @@ class MultiheadAttention(nn.Module):
+     self.query_ln = RMSNorm(self.hd)
+     self.key_ln = RMSNorm(self.hd)
+     self.per_dim_scale = nn.Parameter(torch.zeros(self.hd))
++    # Optional diagscale PEFT adapter (see peft.py): a per-(head,dim) query
++    # multiplier 1+delta, zero-init at injection time so it starts as a no-op.
++    # Plain None here (not a Parameter) so checkpoints load strict=True; the
++    # parameter only exists after peft.inject_diagscale.
++    self.diag_delta = None
++    # Optional (IA)3-style adapters (see peft.py, Liu et al. 2022): per-(head,dim)
++    # multipliers 1+delta on keys / values. Parametrized as zero-init deltas (not
++    # ones-init vectors) so weight decay pulls toward the pretrained identity,
++    # matching the diagscale convention. l_k is applied AFTER key_ln, mirroring
++    # diag_delta's post-norm placement, so its logit effect is exactly
++    # qᵀ diag(1+δ_k) k (T5, the original (IA)3 host, has no key norm).
++    self.ia3_delta_k = None
++    self.ia3_delta_v = None
+ 
+   def forward(self, query, key, value, attn_mask=None, rope=None):
+     b, tq, d = query.shape
+@@ -117,6 +130,15 @@ class MultiheadAttention(nn.Module):
+     # per-dim scale in float32 (softplus), then cast to compute dtype -- matches JAX PerDimScale.
+     scale = 1.442695041 / math.sqrt(self.hd) * F.softplus(self.per_dim_scale.float())
+     q = q * scale.to(q.dtype)
++    if self.diag_delta is not None:
++      # diagscale PEFT: diagonal similarity metric on the FINAL query (after
++      # RoPE/RMSNorm/per_dim_scale, before SDPA-at-scale-1.0), so that
++      # q̃·k = qᵀ diag(1+δ) k exactly. delta: [nhead, hd] broadcast over [B,T,N,D].
++      q = q * (1.0 + self.diag_delta).to(q.dtype)
++    if self.ia3_delta_k is not None:
++      k = k * (1.0 + self.ia3_delta_k).to(k.dtype)
++    if self.ia3_delta_v is not None:
++      v = v * (1.0 + self.ia3_delta_v).to(v.dtype)
+     q, k, v = (z.transpose(1, 2) for z in (q, k, v))  # [B,N,T,D]
+     # bf16 SDPA (flash already does the softmax in float32 internally).
+     o = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, scale=1.0)
+@@ -140,6 +162,9 @@ class MultiheadAttentionBlock(nn.Module):
+       self.act = get_activation(activation)
+     self.linear2 = nn.Linear(dim_ff, d_model)
+     self.ffn_chunk_size = None  # set to an int to chunk the FFN over tokens
++    # Optional (IA)3 FFN adapter (see peft.py): 1+delta on the intermediate
++    # activation (after the swiglu gate product / nonlinearity, before linear2).
++    self.ia3_delta_ff = None
+ 
+   def _ff_impl(self, x):
+     xn = self.pre_ff_ln(x)
+@@ -147,6 +172,8 @@ class MultiheadAttentionBlock(nn.Module):
+       x = self.act(self.linear1_gate(xn)) * self.linear1(xn)
+     else:
+       x = self.act(self.linear1(xn))
++    if self.ia3_delta_ff is not None:
++      x = x * (1.0 + self.ia3_delta_ff).to(x.dtype)
+     return self.post_ff_ln(self.linear2(x))
+ 
+   def _ff(self, x):
+diff --git a/tabfm/src/pytorch/peft.py b/tabfm/src/pytorch/peft.py
+new file mode 100644
+index 0000000..a834019
+--- /dev/null
++++ b/tabfm/src/pytorch/peft.py
+@@ -0,0 +1,178 @@
++# Copyright 2026 Google LLC
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++"""Parameter-selection hook for PEFT-style finetuning of the PyTorch TabFM
++(ttc diagscale fork addition, mirroring the tabpfn fork's finetuning/peft.py).
++
++select_trainable() decides which parameters a finetuning optimizer sees;
++everything else is frozen (requires_grad=False).
++
++Modes:
++    full       all parameters, requires_grad untouched (plain full finetuning)
++    regex      parameters whose fully-qualified name matches cfg["pattern"]
++    diagscale  inject a fresh per-(head,dim) multiplier 1+delta on the query of
++               every MultiheadAttention whose MODULE name matches
++               cfg["pattern"], then train ONLY the deltas. delta is
++               zero-initialized so injection is behavior-preserving (the
++               wrapped model reproduces the pretrained model exactly until
++               training moves delta). The multiplier is applied to the final
++               query right before SDPA (after RoPE / q-RMSNorm /
++               per_dim_scale; SDPA runs at scale=1.0), so it is literally a
++               learned diagonal similarity metric: q̃·k = qᵀ diag(1+δ) k.
++    ia3        (IA)3 (Liu et al. 2022) baseline: 1+delta multipliers on keys /
++               values (post key_ln) and/or the FFN intermediate activation,
++               cfg["parts"] ⊆ {"k","v","ff"} (default all three). Same zero-init
++               delta convention as diagscale so lr/wd sweeps are comparable;
++               the k part is logit-equivalent to diagscale's q-side delta.
++
++Useful patterns (module names of the released TabFM v1.0.0):
++    "."                  all 42 attention modules (53,760 delta params)
++    r"^col_embedder\\."   the FIRST column embedder only — the most upstream
++                         attention that reads the training set (it embeds each
++                         feature's distribution by attending over train rows);
++                         6 modules, 1,536 delta params.
++"""
++from __future__ import annotations
++
++import logging
++import re
++from typing import Any
++
++import torch
++
++from tabfm.src.pytorch.model import MultiheadAttention, MultiheadAttentionBlock
++
++logger = logging.getLogger(__name__)
++
++
++def inject_diagscale(model: torch.nn.Module, pattern: str) -> int:
++  """Register a zero-init diag_delta [nhead, hd] on every MultiheadAttention
++  whose module name matches `pattern`. In-place; returns the number injected.
++
++  delta is created float32 regardless of the backbone dtype (the forward casts
++  1+delta to the compute dtype), so tiny optimizer updates are not lost to
++  bf16 rounding. No RNG needed (deterministic zero-init).
++  """
++  rx = re.compile(pattern)
++  targets = [(n, m) for n, m in model.named_modules()
++             if isinstance(m, MultiheadAttention) and rx.search(n)]
++  for name, mod in targets:
++    if mod.diag_delta is not None:
++      raise ValueError(f"diagscale already injected at {name!r}")
++    ref = mod.per_dim_scale
++    mod.diag_delta = torch.nn.Parameter(
++        torch.zeros(mod.nhead, mod.hd, device=ref.device, dtype=torch.float32))
++  return len(targets)
++
++
++def inject_ia3(model: torch.nn.Module, pattern: str, parts: tuple = ("k", "v", "ff")) -> int:
++  """(IA)3 (Liu et al. 2022) adapters as zero-init deltas: 1+delta multipliers on keys /
++  values ([nhead, hd], applied post key_ln — the metric-exact analog of diag_delta on q)
++  and/or the FFN intermediate activation ([dim_ff]). `pattern` matches module names;
++  `parts` selects which of k / v / ff to inject. Returns the number of injected tensors.
++
++  Zero-init deltas (rather than the paper's ones-init vectors) keep the multiplier
++  identity at start AND give AdamW weight decay the correct prior (pull toward the
++  pretrained model, not toward a zero function) — consistent with diagscale, so lr/wd
++  sweeps are directly comparable across the two adapter families.
++  """
++  rx = re.compile(pattern)
++  n = 0
++  if "k" in parts or "v" in parts:
++    for name, mod in model.named_modules():
++      if isinstance(mod, MultiheadAttention) and rx.search(name):
++        ref = mod.per_dim_scale
++        if "k" in parts:
++          if mod.ia3_delta_k is not None:
++            raise ValueError(f"ia3 (k) already injected at {name!r}")
++          mod.ia3_delta_k = torch.nn.Parameter(
++              torch.zeros(mod.nhead, mod.hd, device=ref.device, dtype=torch.float32))
++          n += 1
++        if "v" in parts:
++          if mod.ia3_delta_v is not None:
++            raise ValueError(f"ia3 (v) already injected at {name!r}")
++          mod.ia3_delta_v = torch.nn.Parameter(
++              torch.zeros(mod.nhead, mod.hd, device=ref.device, dtype=torch.float32))
++          n += 1
++  if "ff" in parts:
++    for name, mod in model.named_modules():
++      if isinstance(mod, MultiheadAttentionBlock) and rx.search(name):
++        if mod.ia3_delta_ff is not None:
++          raise ValueError(f"ia3 (ff) already injected at {name!r}")
++        ref = mod.linear2.weight
++        mod.ia3_delta_ff = torch.nn.Parameter(
++            torch.zeros(mod.linear2.in_features, device=ref.device, dtype=torch.float32))
++        n += 1
++  return n
++
++
++def select_trainable(
++    model: torch.nn.Module,
++    mode: str = "full",
++    **cfg: Any,
++) -> list[torch.nn.Parameter]:
++  """Freeze/unfreeze `model`'s parameters per `mode`; return the trainables."""
++  named = list(model.named_parameters())
++  n_total = sum(p.numel() for _, p in named)
++
++  if mode == "full":
++    selected = [p for _, p in named]  # requires_grad untouched
++  elif mode == "diagscale":
++    n_injected = inject_diagscale(model, pattern=cfg["pattern"])
++    if n_injected == 0:
++      raise ValueError(
++          f"finetune_mode='diagscale' (cfg={cfg}) matched 0 MultiheadAttention modules")
++    selected = []
++    for name, param in model.named_parameters():  # re-enumerate: deltas now exist
++      train = name.endswith(".diag_delta")
++      param.requires_grad_(train)
++      if train:
++        selected.append(param)
++    if not selected:
++      raise ValueError(
++          f"finetune_mode='diagscale' injected {n_injected} module(s) but selected 0 params")
++    logger.info("finetune_mode=diagscale: injected %d attention module(s)", n_injected)
++  elif mode == "ia3":
++    parts = tuple(cfg.get("parts", ("k", "v", "ff")))
++    n_injected = inject_ia3(model, pattern=cfg.get("pattern", "."), parts=parts)
++    if n_injected == 0:
++      raise ValueError(f"finetune_mode='ia3' (cfg={cfg}) matched 0 modules")
++    selected = []
++    for name, param in model.named_parameters():  # re-enumerate: deltas now exist
++      train = any(name.endswith(f".ia3_delta_{p}") for p in ("k", "v", "ff"))
++      param.requires_grad_(train)
++      if train:
++        selected.append(param)
++    if not selected:
++      raise ValueError(f"finetune_mode='ia3' injected {n_injected} tensor(s) but selected 0 params")
++    logger.info("finetune_mode=ia3: injected %d tensor(s) (parts=%s)", n_injected, parts)
++  elif mode == "regex":
++    rx = re.compile(cfg["pattern"])
++    selected = []
++    for name, param in named:
++      train = rx.search(name) is not None
++      param.requires_grad_(train)
++      if train:
++        selected.append(param)
++    if not selected:
++      raise ValueError(f"finetune_mode='regex' (cfg={cfg}) selected 0 parameters")
++  else:
++    raise ValueError(f"unknown finetune_mode {mode!r} (full | regex | diagscale | ia3)")
++
++  n_selected = sum(p.numel() for p in selected)
++  msg = (f"finetune_mode={mode}: trainable {n_selected:,} / {n_total:,} params "
++         f"({100 * n_selected / n_total:.4f}%)")
++  logger.info(msg)
++  print(f"[tabfm.pytorch.peft] {msg}", flush=True)  # visibility in job logs
++  return selected
+diff --git a/tabfm/src/pytorch/peft_test.py b/tabfm/src/pytorch/peft_test.py
+new file mode 100644
+index 0000000..bc40ec1
+--- /dev/null
++++ b/tabfm/src/pytorch/peft_test.py
+@@ -0,0 +1,153 @@
++# Copyright 2026 Google LLC
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++import unittest
++
++import torch
++
++from tabfm.src.pytorch import peft
++from tabfm.src.pytorch.model import MultiheadAttention, TabFM
++
++
++def _tiny_model(seed=0):
++  torch.manual_seed(seed)
++  m = TabFM(
++      embed_dim=16, max_classes=10, col_num_blocks=2, col_nhead=2,
++      col_num_inds=8, row_num_blocks=2, row_nhead=2, row_num_cls=4,
++      icl_num_blocks=2, icl_nhead=2, ff_factor=2, feature_group_size=3,
++      is_classifier=True)
++  # The released checkpoints have non-trivial weights; randomize the zeros-init
++  # params so the identity test is not trivially passing on zero activations.
++  with torch.no_grad():
++    for p in m.parameters():
++      if (p == 0).all():
++        p.normal_(0, 0.02)
++  m.eval()
++  return m
++
++
++def _dummy_batch(seed=0):
++  g = torch.Generator().manual_seed(seed)
++  x = torch.randn(2, 6, 5, generator=g)
++  y = torch.randint(0, 3, (2, 6), generator=g)
++  train_size = torch.tensor([4, 4])
++  return x, y, train_size
++
++
++class PeftTest(unittest.TestCase):
++
++  def test_injection_is_identity_at_init(self):
++    """Zero-init delta must not change the forward output at all."""
++    m = _tiny_model()
++    x, y, train_size = _dummy_batch()
++    with torch.no_grad():
++      before = m(x, y, train_size)
++    n = peft.inject_diagscale(m, pattern=".")
++    self.assertGreater(n, 0)
++    with torch.no_grad():
++      after = m(x, y, train_size)
++    torch.testing.assert_close(before, after, rtol=0, atol=0)
++
++  def test_select_trainable_diagscale_only_deltas(self):
++    m = _tiny_model()
++    n_attn = sum(1 for _, mod in m.named_modules()
++                 if isinstance(mod, MultiheadAttention))
++    selected = peft.select_trainable(m, mode="diagscale", pattern=".")
++    self.assertEqual(len(selected), n_attn)
++    for name, p in m.named_parameters():
++      self.assertEqual(p.requires_grad, name.endswith(".diag_delta"), name)
++    n_expected = sum(mod.nhead * mod.hd for _, mod in m.named_modules()
++                     if isinstance(mod, MultiheadAttention))
++    self.assertEqual(sum(p.numel() for p in selected), n_expected)
++
++  def test_scoped_pattern_matches_subset(self):
++    m = _tiny_model()
++    n = peft.inject_diagscale(m, pattern=r"^col_embedder\.")
++    # col_embedder: col_num_blocks x (mab1, mab2) = 4 attention modules.
++    self.assertEqual(n, 4)
++    injected = [name for name, _ in m.named_parameters()
++                if name.endswith(".diag_delta")]
++    self.assertEqual(len(injected), 4)
++    for name in injected:
++      self.assertTrue(name.startswith("col_embedder."), name)
++
++  def test_gradient_flows_to_delta_and_moves_output(self):
++    m = _tiny_model()
++    selected = peft.select_trainable(m, mode="diagscale", pattern=".")
++    x, y, train_size = _dummy_batch()
++    out = m(x, y, train_size)
++    loss = out.square().mean()
++    loss.backward()
++    grads = [p.grad for p in selected]
++    self.assertTrue(all(g is not None for g in grads))
++    self.assertTrue(any(g.abs().sum() > 0 for g in grads))
++    # A non-zero delta must change the output (the multiplier is live).
++    with torch.no_grad():
++      before = m(x, y, train_size)
++      for p in selected:
++        p.add_(0.05)
++      after = m(x, y, train_size)
++    self.assertGreater((before - after).abs().max().item(), 0)
++
++  def test_full_mode_untouched(self):
++    m = _tiny_model()
++    selected = peft.select_trainable(m, mode="full")
++    self.assertEqual(len(selected), len(list(m.parameters())))
++    self.assertTrue(all(p.requires_grad for p in m.parameters()))
++
++  def test_double_injection_raises(self):
++    m = _tiny_model()
++    peft.inject_diagscale(m, pattern=".")
++    with self.assertRaises(ValueError):
++      peft.inject_diagscale(m, pattern=".")
++
++  def test_ia3_identity_and_selection(self):
++    m = _tiny_model()
++    x, y, train_size = _dummy_batch()
++    with torch.no_grad():
++      before = m(x, y, train_size)
++    selected = peft.select_trainable(m, mode="ia3", pattern=".", parts=("k", "v", "ff"))
++    with torch.no_grad():
++      after = m(x, y, train_size)
++    torch.testing.assert_close(before, after, rtol=0, atol=0)
++    n_attn = sum(1 for _, mod in m.named_modules() if isinstance(mod, MultiheadAttention))
++    # k + v per attention, ff per block (blocks == attentions in this model: every
++    # MultiheadAttentionBlock owns exactly one MultiheadAttention).
++    self.assertEqual(len(selected), 3 * n_attn)
++    for name, p in m.named_parameters():
++      is_ia3 = name.rsplit(".", 1)[-1] in ("ia3_delta_k", "ia3_delta_v", "ia3_delta_ff")
++      self.assertEqual(p.requires_grad, is_ia3, name)
++
++  def test_ia3_parts_subset_and_gradients(self):
++    m = _tiny_model()
++    selected = peft.select_trainable(m, mode="ia3", pattern=".", parts=("k", "v"))
++    names = [n for n, p in m.named_parameters() if p.requires_grad]
++    self.assertTrue(all(n.endswith((".ia3_delta_k", ".ia3_delta_v")) for n in names))
++    self.assertFalse(any(n.endswith(".ia3_delta_ff") for n in names))
++    x, y, train_size = _dummy_batch()
++    out = m(x, y, train_size)
++    out.square().mean().backward()
++    self.assertTrue(any(p.grad is not None and p.grad.abs().sum() > 0 for p in selected))
++
++  def test_state_dict_roundtrip_before_injection(self):
++    """Checkpoint loading (strict) must be unaffected when nothing is injected."""
++    m1, m2 = _tiny_model(seed=1), _tiny_model(seed=2)
++    m2.load_state_dict(m1.state_dict(), strict=True)
++    x, y, train_size = _dummy_batch()
++    with torch.no_grad():
++      torch.testing.assert_close(m1(x, y, train_size), m2(x, y, train_size))
++
++
++if __name__ == "__main__":
++  unittest.main()

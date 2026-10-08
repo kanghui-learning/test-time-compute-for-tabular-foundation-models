@@ -1,0 +1,100 @@
+From d00a2df4a05f1f18f9883c720baee19939d48768 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Tue, 7 Jul 2026 18:13:04 +0000
+Subject: [PATCH 7/8] finetuning: add diagscale mode (bare learnable diagonal
+ metric on the query)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+New DiagScale wrapper + inject_diagscale, mirroring the LoRA path: freeze a
+SoftmaxScalingMLP's base and multiply its output query by a trainable,
+zero-init per-(head,dim) factor, q̃ = base(q,n) * (1+delta). select_trainable
+gains a "diagscale" mode that injects the wrapper into modules matching
+cfg["pattern"] and trains only .delta. Lets a probe learn the diagonal
+similarity metric directly (delta is the readable metric correction), without
+finetuning base_mlp or its ln-n conditioning.
+---
+ src/tabpfn/finetuning/peft.py | 52 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/src/tabpfn/finetuning/peft.py b/src/tabpfn/finetuning/peft.py
+index 3b71db87..8be9a10c 100644
+--- a/src/tabpfn/finetuning/peft.py
++++ b/src/tabpfn/finetuning/peft.py
+@@ -85,6 +85,43 @@ def inject_lora(
+     return len(targets)
+ 
+ 
++class DiagScale(torch.nn.Module):
++    """Wrap a SoftmaxScalingMLP with a frozen base + a trainable per-(head,dim) multiplier 1+delta.
++
++    delta is zero-initialized so injection starts as a no-op (forward == base). This is the direct,
++    minimal parameterization of the "diagonal similarity metric" hypothesis: rather than finetuning
++    base_mlp, learn a bare constant scale on the query, q̃ = base(q,n) * (1+delta). delta [H,D] is then
++    literally the learned metric correction (readable without reconstructing s from base_mlp weights).
++    Mirrors LoRALinear: frozen base, zero-init adapter, wrapped in place at select_trainable time
++    (after the checkpoint load), so it never interferes with strict loading.
++    """
++
++    def __init__(self, base: torch.nn.Module):
++        super().__init__()
++        self.base = base
++        for p in self.base.parameters():
++            p.requires_grad_(False)
++        h, d = int(base.num_heads), int(base.head_dim)
++        ref = next(self.base.parameters())
++        self.delta = torch.nn.Parameter(torch.zeros(h, d, device=ref.device, dtype=ref.dtype))
++
++    def forward(self, q: torch.Tensor, n: int) -> torch.Tensor:  # base(q,n) * (1+delta), [B,S,H,D]*[H,D]
++        return self.base(q, n) * (1.0 + self.delta)
++
++
++def inject_diagscale(model: torch.nn.Module, pattern: str) -> int:
++    """Replace every SoftmaxScalingMLP whose MODULE name matches `pattern` with a DiagScale wrapper.
++    In-place; returns the number wrapped. No RNG needed (delta is deterministic zero-init)."""
++    rx = re.compile(pattern)
++    targets = [(n, m) for n, m in model.named_modules()
++               if type(m).__name__ == "SoftmaxScalingMLP" and rx.search(n)]
++    for name, mod in targets:
++        parent_path, _, attr = name.rpartition(".")
++        parent = model.get_submodule(parent_path) if parent_path else model
++        setattr(parent, attr, DiagScale(mod))
++    return len(targets)
++
++
+ def select_trainable(
+     model: torch.nn.Module,
+     mode: str = "full",
+@@ -116,6 +153,19 @@ def select_trainable(
+         if not selected:  # wrapped Linears but no adapter params — should never happen, guard anyway
+             raise ValueError(f"finetune_mode='lora' wrapped {n_wrapped} module(s) but selected 0 params")
+         logger.info("finetune_mode=lora: wrapped %d Linear module(s)", n_wrapped)
++    elif mode == "diagscale":
++        n_wrapped = inject_diagscale(model, pattern=cfg["pattern"])
++        if n_wrapped == 0:
++            raise ValueError(f"finetune_mode='diagscale' (cfg={cfg}) matched 0 SoftmaxScalingMLP modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: delta params now exist
++            train = name.endswith(".delta")
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='diagscale' wrapped {n_wrapped} module(s) but selected 0 params")
++        logger.info("finetune_mode=diagscale: wrapped %d SoftmaxScalingMLP module(s)", n_wrapped)
+     else:
+         if mode == "bitfit":
+             def keep(name: str) -> bool:
+@@ -126,7 +176,7 @@ def select_trainable(
+             def keep(name: str) -> bool:
+                 return pattern.search(name) is not None
+         else:
+-            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex | lora)")
++            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex | lora | diagscale)")
+         selected = []
+         for name, param in named:
+             train = keep(name)
+-- 
+2.34.1
+

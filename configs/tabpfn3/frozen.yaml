@@ -1,0 +1,8 @@
+# Frozen TabPFN-3 (8 native views): the paired-error baseline for TabPFN-3 adaptation, composition
+# and cost. ft_epochs: 0 runs the unmodified TabPFN-3 fit through the finetuning wrapper.
+model: tabpfn3-ft
+mode: full
+tag_suffix: frozen
+hyperparameters:
+  ft_epochs: 0
+  n_estimators: 8

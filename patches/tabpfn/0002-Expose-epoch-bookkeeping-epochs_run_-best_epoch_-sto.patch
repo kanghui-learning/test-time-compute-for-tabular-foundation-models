@@ -1,0 +1,55 @@
+From 94f18661baa65d4fa8fb9707be5bd34c3ef53597 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Fri, 12 Jun 2026 22:02:15 +0000
+Subject: [PATCH 2/8] Expose epoch bookkeeping:
+ epochs_run_/best_epoch_/stopped_early_ after fit
+
+best_epoch_=-1 documents the no-improvement case (loop keeps LAST epoch weights).
+---
+ src/tabpfn/finetuning/finetuned_base.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index 88ed31fa..2dadc7bd 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -756,6 +756,12 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             logger.info("--- 🚀 Starting Fine-tuning ---")
+         patience_counter = 0
+         best_model_state: dict[str, torch.Tensor] | None = None
++        # epoch bookkeeping (ttc-dev): exposed for experiment logging after fit.
++        # best_epoch_ = -1 means no epoch ever improved over the pre-finetuning validation
++        # (note: in that case the final weights are the LAST epoch's, not the pre-FT ones).
++        self.epochs_run_ = 0
++        self.best_epoch_ = -1
++        self.stopped_early_ = False
+ 
+         scheduler: LambdaLR | None = None
+ 
+@@ -768,6 +774,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             y_train=y_train,
+         )
+         for epoch in range(epoch_to_start_from, self.epochs):
++            self.epochs_run_ = epoch + 1
+             # Per-epoch aggregates for cleaner learning curves.
+             epoch_loss_sum = 0.0
+             epoch_batches = 0
+@@ -1010,6 +1017,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+                 if self._is_improvement(primary_metric, best_metric):
+                     best_metric = primary_metric
+                     patience_counter = 0
++                    self.best_epoch_ = epoch + 1
+                     model_sd = self.finetuned_estimator_.model_.state_dict()
+                     best_model_state = {
+                         k: v.detach().cpu().clone() for k, v in model_sd.items()
+@@ -1025,6 +1033,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+                         )
+ 
+                 if patience_counter >= self.early_stopping_patience:
++                    self.stopped_early_ = True
+                     if is_main_process:
+                         logger.info(
+                             "🛑 Early stopping triggered. Best %s: %.4f",
+-- 
+2.34.1
+

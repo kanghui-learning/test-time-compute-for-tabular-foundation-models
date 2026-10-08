@@ -1,0 +1,30 @@
+# Conda environment for the tfm-ttc release.
+#
+#   conda env create -f envs/environment.yml          # creates env "tfm-ttc"
+#   conda activate tfm-ttc
+#   bash scripts/install_forks.sh                      # patched tabpfn/tabicl/tabfm + tabarena@abd24c7
+#   pip install -e .                                   # this package (ttc)
+#
+# Paper runs used Python 3.11.15, torch 2.9.1 (CUDA 12.8 wheels) and AutoGluon nightly
+# 1.5.1b20260612 / 1.5.1b20260702. No stable 1.5.1 exists on PyPI, so this file pins the
+# closest stable release that satisfies tabarena@abd24c7 (`autogluon>=1.5,<1.6`): 1.5.0.
+# To reproduce the paper environment exactly, replace the autogluon line with
+#   autogluon==1.5.1b20260702
+name: tfm-ttc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - git
+  - pip:
+      - torch==2.9.1
+      - autogluon==1.5.0
+      - numpy>=1.25,<2.4
+      - pandas>=2.0,<2.4
+      - scikit-learn>=1.4,<1.8
+      - scipy>=1.11,<1.17
+      - pyyaml
+      - lightgbm>=4.0,<4.7
+      - huggingface_hub>=0.23,<1.0
+      - openml>=0.14.1

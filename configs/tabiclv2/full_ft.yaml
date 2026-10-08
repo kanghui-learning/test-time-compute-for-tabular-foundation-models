@@ -1,0 +1,11 @@
+# TabICL v2 full finetuning (+77 Elo). Learning rate 1e-5, up to 30 epochs,
+# AdamW weight decay 0.01, patience 8, 2 views for finetuning/validation, 8 views at deployment.
+model: tabiclv2-ft
+mode: full
+tag_suffix: full_ft
+hyperparameters:
+  ft_mode: full
+  ft_lr: 1.0e-5
+  ft_wd: 0.01
+  ft_epochs: 30
+  ft_deploy_n_estimators: 8

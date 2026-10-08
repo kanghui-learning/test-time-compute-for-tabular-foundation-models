@@ -1,0 +1,363 @@
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index fb15ded4..82bee798 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -273,9 +273,13 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+     ):
+         super().__init__()
+         self.experiment_logger = experiment_logger
++        self.finetune_mode = finetune_mode
++        self.finetune_cfg = finetune_cfg
+         self.device = device
+         self.epochs = epochs
+         self.time_limit = time_limit
+@@ -597,6 +601,13 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             base_estimator_config,
+             self.n_estimators_finetune,
+         )
++        # ttc-dev fix: the training loop asserts the forward returns exactly
++        # `n_estimators_finetune` ensemble members (see _forward_with_loss), but TabPFN's
++        # auto_scale_n_estimators (default True) silently raises the ensemble size for wide
++        # datasets (n_features > 2*max_features_per_estimator), breaking that assertion.
++        # Disable it ONLY for the finetuning forward; the validation/final-inference configs
++        # keep auto-scaling so inference still gets full feature coverage.
++        finetuning_estimator_config["auto_scale_n_estimators"] = False
+         if model_path is not None:
+             finetuning_estimator_config["model_path"] = model_path
+ 
+@@ -691,8 +702,17 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             )
+             model_for_optimization = self._ddp_module_
+ 
++        # PEFT hook (ttc-dev): pick which parameters the optimizer trains; everything else
++        # is frozen. finetune_mode="full" reproduces upstream behavior exactly.
++        from tabpfn.finetuning.peft import select_trainable
++
++        trainable_params = select_trainable(
++            model_for_optimization,
++            mode=self.finetune_mode,
++            **(self.finetune_cfg or {}),
++        )
+         optimizer = get_and_init_optimizer(
+-            model_parameters=model_for_optimization.parameters(),  # type: ignore
++            model_parameters=trainable_params,  # type: ignore
+             learning_rate=self.learning_rate,
+             weight_decay=self.weight_decay,
+             checkpoint_path=checkpoint_path,
+@@ -742,7 +762,27 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         if is_main_process:
+             logger.info("--- 🚀 Starting Fine-tuning ---")
+         patience_counter = 0
+-        best_model_state: dict[str, torch.Tensor] | None = None
++        # best_model_state is seeded with a snapshot of the PRE-FINETUNING (base) weights so that
++        # if no epoch ever improves over the pre-FT validation metric (best_epoch_ stays -1), the
++        # restore below ships the base checkpoint rather than the last (degraded) epoch's weights.
++        # Gated on early_stopping: with early_stopping=False we intentionally keep the last-epoch
++        # weights (e.g. a fixed-epoch cost-performance trajectory), so no seed is taken. The CPU
++        # clone mirrors the per-improvement snapshot below and bounds GPU memory.
++        best_model_state: dict[str, torch.Tensor] | None = (
++            {
++                k: v.detach().cpu().clone()
++                for k, v in self.finetuned_estimator_.model_.state_dict().items()
++            }
++            if self.early_stopping
++            else None
++        )
++        # epoch bookkeeping (ttc-dev): exposed for experiment logging after fit.
++        # best_epoch_ = -1 means no epoch ever improved over the pre-finetuning validation; with
++        # early_stopping on, the restore below then ships the pre-FT (base) weights, so the model
++        # is never worse than base on its own validation split.
++        self.epochs_run_ = 0
++        self.best_epoch_ = -1
++        self.stopped_early_ = False
+ 
+         scheduler: LambdaLR | None = None
+ 
+@@ -755,6 +795,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             y_train=y_train,
+         )
+         for epoch in range(epoch_to_start_from, self.epochs):
++            self.epochs_run_ = epoch + 1
+             # Per-epoch aggregates for cleaner learning curves.
+             epoch_loss_sum = 0.0
+             epoch_batches = 0
+@@ -997,6 +1038,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+                 if self._is_improvement(primary_metric, best_metric):
+                     best_metric = primary_metric
+                     patience_counter = 0
++                    self.best_epoch_ = epoch + 1
+                     model_sd = self.finetuned_estimator_.model_.state_dict()
+                     best_model_state = {
+                         k: v.detach().cpu().clone() for k, v in model_sd.items()
+@@ -1012,6 +1054,7 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+                         )
+ 
+                 if patience_counter >= self.early_stopping_patience:
++                    self.stopped_early_ = True
+                     if is_main_process:
+                         logger.info(
+                             "🛑 Early stopping triggered. Best %s: %.4f",
+@@ -1046,6 +1089,12 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         if self.early_stopping and best_model_state is not None:
+             self.finetuned_estimator_.model_.load_state_dict(best_model_state)
+ 
++        # ttc-dev: expose the best validation metric (+ its direction) so an outer per-task lr sweep
++        # can select the best hyperparameter by validation (see ttc.finetune.lr_sweep). best_metric
++        # is the pre-FT baseline when no epoch improved (best_epoch_ == -1), matching the restore.
++        self.best_metric_ = float(best_metric)
++        self.greater_is_better_ = self._get_initial_best_metric() == float("-inf")
++
+         # --- DDP cleanup ---
+         self._ddp_module_ = None
+         if using_ddp:
+diff --git a/src/tabpfn/finetuning/finetuned_classifier.py b/src/tabpfn/finetuning/finetuned_classifier.py
+index e72b21c7..64554289 100644
+--- a/src/tabpfn/finetuning/finetuned_classifier.py
++++ b/src/tabpfn/finetuning/finetuned_classifier.py
+@@ -155,6 +155,8 @@ class FinetunedTabPFNClassifier(FinetunedTabPFNBase, ClassifierMixin):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+         extra_classifier_kwargs: dict[str, Any] | None = None,
+         eval_metric: Literal["roc_auc", "log_loss"] | None = None,
+     ):
+@@ -182,6 +184,8 @@ class FinetunedTabPFNClassifier(FinetunedTabPFNBase, ClassifierMixin):
+             save_checkpoint_interval=save_checkpoint_interval,
+             use_fixed_preprocessing_seed=use_fixed_preprocessing_seed,
+             experiment_logger=experiment_logger,
++            finetune_mode=finetune_mode,
++            finetune_cfg=finetune_cfg,
+         )
+         self.extra_classifier_kwargs = extra_classifier_kwargs
+         self.eval_metric = eval_metric
+diff --git a/src/tabpfn/finetuning/finetuned_regressor.py b/src/tabpfn/finetuning/finetuned_regressor.py
+index 54fb89a3..150cdc36 100644
+--- a/src/tabpfn/finetuning/finetuned_regressor.py
++++ b/src/tabpfn/finetuning/finetuned_regressor.py
+@@ -337,6 +337,8 @@ class FinetunedTabPFNRegressor(FinetunedTabPFNBase, RegressorMixin):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+         extra_regressor_kwargs: dict[str, Any] | None = None,
+         ce_loss_weight: float = 0.0,
+         crps_loss_weight: float = 1.0,
+@@ -371,6 +373,8 @@ class FinetunedTabPFNRegressor(FinetunedTabPFNBase, RegressorMixin):
+             save_checkpoint_interval=save_checkpoint_interval,
+             use_fixed_preprocessing_seed=use_fixed_preprocessing_seed,
+             experiment_logger=experiment_logger,
++            finetune_mode=finetune_mode,
++            finetune_cfg=finetune_cfg,
+         )
+         self.extra_regressor_kwargs = extra_regressor_kwargs
+         self.eval_metric = eval_metric
+diff --git a/src/tabpfn/finetuning/peft.py b/src/tabpfn/finetuning/peft.py
+new file mode 100644
+index 00000000..8be9a10c
+--- /dev/null
++++ b/src/tabpfn/finetuning/peft.py
+@@ -0,0 +1,196 @@
++"""Parameter-selection hook for PEFT-style finetuning (ttc-dev fork addition).
++
++select_trainable() decides which parameters the finetuning optimizer sees; everything else is
++frozen (requires_grad=False). Wired into FinetunedTabPFNBase via the `finetune_mode` /
++`finetune_cfg` constructor arguments.
++
++Modes:
++    full    all parameters, requires_grad untouched (the original behavior — must stay
++            equivalent to upstream; guarded by the validation ladder's identity rungs)
++    bitfit  bias terms only (BitFit, Ben Zaken et al. 2022)
++    regex   parameters whose fully-qualified name matches finetune_cfg["pattern"] — the
++            explicit form of "train only these layers"; inspect names first via
++            `[n for n, _ in estimator.model_.named_parameters()]`
++    lora    inject low-rank adapters (Hu et al. 2021) into the nn.Linear MODULES whose name
++            matches finetune_cfg["pattern"], freeze the base weights, train only the adapters.
++            finetune_cfg: {pattern, r=8, alpha=16, dropout=0.0}. NB pattern matches MODULE names
++            (e.g. "...attention.q_proj"), not parameter names — inspect via
++            `[n for n, m in estimator.model_.named_modules() if isinstance(m, torch.nn.Linear)]`.
++"""
++from __future__ import annotations
++
++import logging
++import math
++import re
++from typing import Any
++
++import torch
++import torch.nn.functional as F
++
++logger = logging.getLogger(__name__)
++
++
++class LoRALinear(torch.nn.Module):
++    """Wrap an nn.Linear with a frozen base + a trainable low-rank update B@A·(alpha/r).
++
++    B is zero-initialized so the adapter starts as a no-op (forward == base): injection is
++    therefore behavior-preserving, which also means a never-improved fit (best_epoch=-1) restored
++    to these init weights reproduces base exactly — consistent with the base fall-back.
++    """
++
++    def __init__(self, base: torch.nn.Linear, r: int, alpha: float, dropout: float):
++        super().__init__()
++        if int(r) <= 0:
++            raise ValueError(f"LoRA rank must be a positive int, got r={r!r}")
++        self.base = base
++        self.base.weight.requires_grad_(False)
++        if self.base.bias is not None:
++            self.base.bias.requires_grad_(False)
++        self.r = int(r)
++        self.scaling = float(alpha) / float(r)
++        w = base.weight
++        self.lora_A = torch.nn.Parameter(torch.empty(self.r, base.in_features, device=w.device, dtype=w.dtype))
++        self.lora_B = torch.nn.Parameter(torch.zeros(base.out_features, self.r, device=w.device, dtype=w.dtype))
++        torch.nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
++        self.lora_dropout = torch.nn.Dropout(dropout) if dropout and dropout > 0 else torch.nn.Identity()
++
++    def forward(self, x: torch.Tensor) -> torch.Tensor:  # base(x) + (x A^T) B^T · scaling
++        return self.base(x) + F.linear(F.linear(self.lora_dropout(x), self.lora_A), self.lora_B) * self.scaling
++
++
++def inject_lora(
++    model: torch.nn.Module, pattern: str, r: int, alpha: float, dropout: float, seed: int = 0
++) -> int:
++    """Replace every nn.Linear whose module name matches `pattern` with a LoRALinear. In-place;
++    returns the number of layers wrapped.
++
++    The adapter init (kaiming on lora_A) is made reproducible by seeding the RNG to `seed` for the
++    duration of injection, inside a fork_rng so the global RNG the training loop later relies on is
++    left untouched. Without this, lora_A would draw from the un-seeded global RNG (injection runs
++    before infer_random_state), so identical random_state gave different adapters across runs.
++    """
++    rx = re.compile(pattern)
++    targets = [
++        (n, m) for n, m in model.named_modules()
++        if isinstance(m, torch.nn.Linear) and rx.search(n)
++    ]
++    cuda_idx = sorted({p.device.index for p in model.parameters()
++                       if p.is_cuda and p.device.index is not None})
++    with torch.random.fork_rng(devices=cuda_idx, enabled=True):
++        torch.manual_seed(int(seed))
++        for name, lin in targets:
++            parent_path, _, attr = name.rpartition(".")
++            parent = model.get_submodule(parent_path) if parent_path else model
++            setattr(parent, attr, LoRALinear(lin, r=r, alpha=alpha, dropout=dropout))
++    return len(targets)
++
++
++class DiagScale(torch.nn.Module):
++    """Wrap a SoftmaxScalingMLP with a frozen base + a trainable per-(head,dim) multiplier 1+delta.
++
++    delta is zero-initialized so injection starts as a no-op (forward == base). This is the direct,
++    minimal parameterization of the "diagonal similarity metric" hypothesis: rather than finetuning
++    base_mlp, learn a bare constant scale on the query, q̃ = base(q,n) * (1+delta). delta [H,D] is then
++    literally the learned metric correction (readable without reconstructing s from base_mlp weights).
++    Mirrors LoRALinear: frozen base, zero-init adapter, wrapped in place at select_trainable time
++    (after the checkpoint load), so it never interferes with strict loading.
++    """
++
++    def __init__(self, base: torch.nn.Module):
++        super().__init__()
++        self.base = base
++        for p in self.base.parameters():
++            p.requires_grad_(False)
++        h, d = int(base.num_heads), int(base.head_dim)
++        ref = next(self.base.parameters())
++        self.delta = torch.nn.Parameter(torch.zeros(h, d, device=ref.device, dtype=ref.dtype))
++
++    def forward(self, q: torch.Tensor, n: int) -> torch.Tensor:  # base(q,n) * (1+delta), [B,S,H,D]*[H,D]
++        return self.base(q, n) * (1.0 + self.delta)
++
++
++def inject_diagscale(model: torch.nn.Module, pattern: str) -> int:
++    """Replace every SoftmaxScalingMLP whose MODULE name matches `pattern` with a DiagScale wrapper.
++    In-place; returns the number wrapped. No RNG needed (delta is deterministic zero-init)."""
++    rx = re.compile(pattern)
++    targets = [(n, m) for n, m in model.named_modules()
++               if type(m).__name__ == "SoftmaxScalingMLP" and rx.search(n)]
++    for name, mod in targets:
++        parent_path, _, attr = name.rpartition(".")
++        parent = model.get_submodule(parent_path) if parent_path else model
++        setattr(parent, attr, DiagScale(mod))
++    return len(targets)
++
++
++def select_trainable(
++    model: torch.nn.Module,
++    mode: str = "full",
++    **cfg: Any,
++) -> list[torch.nn.Parameter]:
++    """Freeze/unfreeze `model`'s parameters per `mode`; return the trainable parameters."""
++    named = list(model.named_parameters())
++    n_total = sum(p.numel() for _, p in named)
++
++    if mode == "full":
++        selected = [p for _, p in named]  # requires_grad untouched: exact upstream behavior
++    elif mode == "lora":
++        n_wrapped = inject_lora(
++            model,
++            pattern=cfg["pattern"],
++            r=int(cfg.get("r", 8)),
++            alpha=float(cfg.get("alpha", 16)),
++            dropout=float(cfg.get("dropout", 0.0)),
++            seed=int(cfg.get("seed", 0)),
++        )
++        if n_wrapped == 0:
++            raise ValueError(f"finetune_mode='lora' (cfg={cfg}) matched 0 nn.Linear modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: adapters now exist
++            train = name.endswith(".lora_A") or name.endswith(".lora_B")
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:  # wrapped Linears but no adapter params — should never happen, guard anyway
++            raise ValueError(f"finetune_mode='lora' wrapped {n_wrapped} module(s) but selected 0 params")
++        logger.info("finetune_mode=lora: wrapped %d Linear module(s)", n_wrapped)
++    elif mode == "diagscale":
++        n_wrapped = inject_diagscale(model, pattern=cfg["pattern"])
++        if n_wrapped == 0:
++            raise ValueError(f"finetune_mode='diagscale' (cfg={cfg}) matched 0 SoftmaxScalingMLP modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: delta params now exist
++            train = name.endswith(".delta")
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='diagscale' wrapped {n_wrapped} module(s) but selected 0 params")
++        logger.info("finetune_mode=diagscale: wrapped %d SoftmaxScalingMLP module(s)", n_wrapped)
++    else:
++        if mode == "bitfit":
++            def keep(name: str) -> bool:
++                return name.endswith(".bias")
++        elif mode == "regex":
++            pattern = re.compile(cfg["pattern"])
++
++            def keep(name: str) -> bool:
++                return pattern.search(name) is not None
++        else:
++            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex | lora | diagscale)")
++        selected = []
++        for name, param in named:
++            train = keep(name)
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='{mode}' (cfg={cfg}) selected 0 parameters")
++
++    n_selected = sum(p.numel() for p in selected)
++    msg = (
++        f"finetune_mode={mode}: trainable {n_selected:,} / {n_total:,} params "
++        f"({100 * n_selected / n_total:.2f}%)"
++    )
++    logger.info(msg)
++    print(f"[tabpfn.finetuning.peft] {msg}", flush=True)  # ensure visibility in job logs
++    return selected

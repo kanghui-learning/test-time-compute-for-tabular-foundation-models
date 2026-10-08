@@ -1,0 +1,14 @@
+# TabFM DiagScale (+20 Elo). Learning rate 1e-2; other settings
+# as in full_ft.yaml.
+model: tabfm-ft
+mode: full
+tag_suffix: diagscale
+raise_on_failure: false
+hyperparameters:
+  ft_mode: diagscale
+  ft_lr: 1.0e-2
+  ft_wd: 0.01
+  ft_epochs: 30
+  ft_patience: 8
+  n_estimators: 32
+  ft_n_est_finetune: 2

@@ -1,0 +1,9 @@
+# Frozen TabICL v2 (8 views), mixed precision and FlashAttention-3 disabled.
+model: tabiclv2-ft
+mode: full
+tag_suffix: frozen
+hyperparameters:
+  ft_epochs: 0
+  n_estimators: 8
+  use_amp: false
+  use_fa3: false

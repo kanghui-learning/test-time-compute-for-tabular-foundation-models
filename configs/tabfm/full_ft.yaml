@@ -1,0 +1,14 @@
+# TabFM full finetuning (+28 Elo). Learning rate 1e-4, up to 30 epochs,
+# bf16, 2 views for finetuning, 32 views at deployment; deployment matches frozen.yaml.
+model: tabfm-ft
+mode: full
+tag_suffix: full_ft
+raise_on_failure: false
+hyperparameters:
+  ft_mode: full
+  ft_lr: 1.0e-4
+  ft_wd: 0.01
+  ft_epochs: 30
+  ft_patience: 8
+  n_estimators: 32
+  ft_n_est_finetune: 2

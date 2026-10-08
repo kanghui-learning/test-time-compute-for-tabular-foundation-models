@@ -1,0 +1,105 @@
+From efda645f3dd620906a55a743d27a9b664299024c Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Wed, 15 Jul 2026 02:29:54 +0000
+Subject: [PATCH 3/3] fix(peft): KV cache must store pre-rescale K/V;
+ select_trainable hardening
+
+- attention.py: need_kv now returns the PRE-(IA)3 K/V for caching; the rescale
+  runs on both fresh and cached paths, so caching post-rescale tensors gave
+  (1+delta)^2 on every cache reuse (silent, invisible at delta=0).
+  New regression test: cached path == fresh path with nonzero deltas
+  (verified to fail on the previous code).
+- peft.py: mode=full no longer hands requires_grad=False params (rope freqs
+  with learned_freq=False) to the optimizer / n_trainable count; mode=regex
+  now raises on freeze_others=False instead of silently ignoring it.
+---
+ src/tabicl/_model/attention.py |  8 +++++---
+ src/tabicl/_model/peft.py      |  6 +++++-
+ tests/test_peft.py             | 22 ++++++++++++++++++++++
+ 3 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/src/tabicl/_model/attention.py b/src/tabicl/_model/attention.py
+index cb84124..af5d995 100644
+--- a/src/tabicl/_model/attention.py
++++ b/src/tabicl/_model/attention.py
+@@ -285,8 +285,10 @@ def multi_head_attention_forward(
+         if rope is not None:
+             q = rope.rotate_queries_or_keys(q)
+ 
+-    # (IA)3 adapters rescale the final K/V after projection (and RoPE for K),
+-    # covering both the fresh-projection and cached-KV paths
++    # (IA)3 adapters rescale the final K/V after projection (and RoPE for K). The rescale runs on
++    # BOTH the fresh-projection and cached-KV paths, so the need_kv return below must hand back the
++    # PRE-rescale tensors — a cache holding rescaled K/V would get (1+delta)^2 on every reuse.
++    k_raw, v_raw = k, v
+     if ia3_delta_k is not None:
+         k = k * (1.0 + ia3_delta_k).to(k.dtype)
+     if ia3_delta_v is not None:
+@@ -337,6 +339,6 @@ def multi_head_attention_forward(
+     attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)  # (batch_shape, tgt_len, E)
+ 
+     if need_kv and cached_kv is None:
+-        return attn_output, k, v
++        return attn_output, k_raw, v_raw
+ 
+     return attn_output
+diff --git a/src/tabicl/_model/peft.py b/src/tabicl/_model/peft.py
+index 05f1c2b..aa42026 100644
+--- a/src/tabicl/_model/peft.py
++++ b/src/tabicl/_model/peft.py
+@@ -125,7 +125,9 @@ def select_trainable(
+     n_total = sum(p.numel() for _, p in named)
+ 
+     if mode == "full":
+-        selected = [p for _, p in named]  # requires_grad untouched
++        # requires_grad untouched; skip params that are non-trainable by design
++        # (each RotaryEmbedding's freqs when learned_freq=False)
++        selected = [p for _, p in named if p.requires_grad]
+     elif mode == "diagscale":
+         n_injected = inject_diagscale(model, pattern=cfg["pattern"])
+         if n_injected == 0:
+@@ -156,6 +158,8 @@ def select_trainable(
+             raise ValueError(f"finetune_mode='ia3' injected {n_injected} tensor(s) but selected 0 params")
+         logger.info("finetune_mode=ia3: injected %d tensor(s) (parts=%s)", n_injected, parts)
+     elif mode == "regex":
++        if not freeze_others:
++            raise ValueError("freeze_others=False is only supported for adapter modes (diagscale/ia3)")
+         rx = re.compile(cfg["pattern"])
+         selected = []
+         for name, param in named:
+diff --git a/tests/test_peft.py b/tests/test_peft.py
+index 48cc0d3..2179bad 100644
+--- a/tests/test_peft.py
++++ b/tests/test_peft.py
+@@ -143,6 +143,28 @@ def test_select_trainable_no_freeze():
+         assert p.requires_grad == flags_before.get(n, True), n
+ 
+ 
++def test_ia3_cached_kv_matches_fresh_path():
++    # the KV cache must store PRE-rescale projections: with nonzero ia3 deltas the
++    # cached path must reproduce the fresh path exactly once (not (1+delta)^2)
++    from tabicl._model.kv_cache import KVCacheEntry
++
++    model = make_model()
++    inject_ia3(model, ".", parts=("k", "v"))
++    with torch.no_grad():
++        for _, m in model.named_modules():
++            if isinstance(m, MultiheadAttention):
++                m.ia3_delta_k.fill_(0.3)
++                m.ia3_delta_v.fill_(-0.2)
++    mha = next(m for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++    g = torch.Generator().manual_seed(2)
++    q = torch.randn(1, 6, mha.embed_dim, generator=g)
++    kv = torch.randn(1, 10, mha.embed_dim, generator=g)
++    with torch.no_grad():
++        fresh, k_cache, v_cache = mha(q, kv, kv, need_kv=True)
++        cached = mha(q, cached_kv=KVCacheEntry(key=k_cache, value=v_cache))
++    assert torch.allclose(fresh, cached, atol=1e-6)
++
++
+ def test_state_dict_roundtrip():
+     model_a = make_model()
+     inject_diagscale(model_a, ".")
+-- 
+2.34.1
+

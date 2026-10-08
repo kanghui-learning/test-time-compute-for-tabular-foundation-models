@@ -1,0 +1,10 @@
+# TabPFN-3 DiagScale (+26 Elo).
+# A zero-initialized diagonal multiplier (1 + delta) on every softmax-scaling module; the pretrained
+# weights stay frozen. Learning rate 3e-2, up to 30 epochs; other settings as in full_ft.yaml.
+model: tabpfn3-ft
+mode: full
+tag_suffix: diagscale
+hyperparameters:
+  ft_mode: diagscale
+  ft_lr: 3.0e-2
+  ft_epochs: 30

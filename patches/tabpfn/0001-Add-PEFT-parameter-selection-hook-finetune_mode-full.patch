@@ -1,0 +1,172 @@
+From 339043d57f2107fd3e1372057e8dd5b29b99be91 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Fri, 12 Jun 2026 20:16:52 +0000
+Subject: [PATCH 1/8] Add PEFT parameter-selection hook (finetune_mode:
+ full|bitfit|regex)
+
+select_trainable() in finetuning/peft.py picks what the optimizer trains and
+freezes the rest; wired via finetune_mode/finetune_cfg ctor args on
+FinetunedTabPFNBase + both subclasses. mode=full returns all params with
+requires_grad untouched (exact upstream behavior). Logs trainable/total count.
+---
+ src/tabpfn/finetuning/finetuned_base.py       | 15 ++++-
+ src/tabpfn/finetuning/finetuned_classifier.py |  4 ++
+ src/tabpfn/finetuning/finetuned_regressor.py  |  4 ++
+ src/tabpfn/finetuning/peft.py                 | 64 +++++++++++++++++++
+ 4 files changed, 86 insertions(+), 1 deletion(-)
+ create mode 100644 src/tabpfn/finetuning/peft.py
+
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index fb15ded4..88ed31fa 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -273,9 +273,13 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+     ):
+         super().__init__()
+         self.experiment_logger = experiment_logger
++        self.finetune_mode = finetune_mode
++        self.finetune_cfg = finetune_cfg
+         self.device = device
+         self.epochs = epochs
+         self.time_limit = time_limit
+@@ -691,8 +695,17 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             )
+             model_for_optimization = self._ddp_module_
+ 
++        # PEFT hook (ttc-dev): pick which parameters the optimizer trains; everything else
++        # is frozen. finetune_mode="full" reproduces upstream behavior exactly.
++        from tabpfn.finetuning.peft import select_trainable
++
++        trainable_params = select_trainable(
++            model_for_optimization,
++            mode=self.finetune_mode,
++            **(self.finetune_cfg or {}),
++        )
+         optimizer = get_and_init_optimizer(
+-            model_parameters=model_for_optimization.parameters(),  # type: ignore
++            model_parameters=trainable_params,  # type: ignore
+             learning_rate=self.learning_rate,
+             weight_decay=self.weight_decay,
+             checkpoint_path=checkpoint_path,
+diff --git a/src/tabpfn/finetuning/finetuned_classifier.py b/src/tabpfn/finetuning/finetuned_classifier.py
+index e72b21c7..64554289 100644
+--- a/src/tabpfn/finetuning/finetuned_classifier.py
++++ b/src/tabpfn/finetuning/finetuned_classifier.py
+@@ -155,6 +155,8 @@ class FinetunedTabPFNClassifier(FinetunedTabPFNBase, ClassifierMixin):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+         extra_classifier_kwargs: dict[str, Any] | None = None,
+         eval_metric: Literal["roc_auc", "log_loss"] | None = None,
+     ):
+@@ -182,6 +184,8 @@ class FinetunedTabPFNClassifier(FinetunedTabPFNBase, ClassifierMixin):
+             save_checkpoint_interval=save_checkpoint_interval,
+             use_fixed_preprocessing_seed=use_fixed_preprocessing_seed,
+             experiment_logger=experiment_logger,
++            finetune_mode=finetune_mode,
++            finetune_cfg=finetune_cfg,
+         )
+         self.extra_classifier_kwargs = extra_classifier_kwargs
+         self.eval_metric = eval_metric
+diff --git a/src/tabpfn/finetuning/finetuned_regressor.py b/src/tabpfn/finetuning/finetuned_regressor.py
+index 54fb89a3..150cdc36 100644
+--- a/src/tabpfn/finetuning/finetuned_regressor.py
++++ b/src/tabpfn/finetuning/finetuned_regressor.py
+@@ -337,6 +337,8 @@ class FinetunedTabPFNRegressor(FinetunedTabPFNBase, RegressorMixin):
+         save_checkpoint_interval: int | None = 10,
+         use_fixed_preprocessing_seed: bool = True,
+         experiment_logger: FinetuningLogger | None = None,
++        finetune_mode: str = "full",
++        finetune_cfg: dict[str, Any] | None = None,
+         extra_regressor_kwargs: dict[str, Any] | None = None,
+         ce_loss_weight: float = 0.0,
+         crps_loss_weight: float = 1.0,
+@@ -371,6 +373,8 @@ class FinetunedTabPFNRegressor(FinetunedTabPFNBase, RegressorMixin):
+             save_checkpoint_interval=save_checkpoint_interval,
+             use_fixed_preprocessing_seed=use_fixed_preprocessing_seed,
+             experiment_logger=experiment_logger,
++            finetune_mode=finetune_mode,
++            finetune_cfg=finetune_cfg,
+         )
+         self.extra_regressor_kwargs = extra_regressor_kwargs
+         self.eval_metric = eval_metric
+diff --git a/src/tabpfn/finetuning/peft.py b/src/tabpfn/finetuning/peft.py
+new file mode 100644
+index 00000000..9b44a86c
+--- /dev/null
++++ b/src/tabpfn/finetuning/peft.py
+@@ -0,0 +1,64 @@
++"""Parameter-selection hook for PEFT-style finetuning (ttc-dev fork addition).
++
++select_trainable() decides which parameters the finetuning optimizer sees; everything else is
++frozen (requires_grad=False). Wired into FinetunedTabPFNBase via the `finetune_mode` /
++`finetune_cfg` constructor arguments.
++
++Modes:
++    full    all parameters, requires_grad untouched (the original behavior — must stay
++            equivalent to upstream; guarded by the validation ladder's identity rungs)
++    bitfit  bias terms only (BitFit, Ben Zaken et al. 2022)
++    regex   parameters whose fully-qualified name matches finetune_cfg["pattern"] — the
++            explicit form of "train only these layers"; inspect names first via
++            `[n for n, _ in estimator.model_.named_parameters()]`
++"""
++from __future__ import annotations
++
++import logging
++import re
++from typing import Any
++
++import torch
++
++logger = logging.getLogger(__name__)
++
++
++def select_trainable(
++    model: torch.nn.Module,
++    mode: str = "full",
++    **cfg: Any,
++) -> list[torch.nn.Parameter]:
++    """Freeze/unfreeze `model`'s parameters per `mode`; return the trainable parameters."""
++    named = list(model.named_parameters())
++    n_total = sum(p.numel() for _, p in named)
++
++    if mode == "full":
++        selected = [p for _, p in named]  # requires_grad untouched: exact upstream behavior
++    else:
++        if mode == "bitfit":
++            def keep(name: str) -> bool:
++                return name.endswith(".bias")
++        elif mode == "regex":
++            pattern = re.compile(cfg["pattern"])
++
++            def keep(name: str) -> bool:
++                return pattern.search(name) is not None
++        else:
++            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex)")
++        selected = []
++        for name, param in named:
++            train = keep(name)
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='{mode}' (cfg={cfg}) selected 0 parameters")
++
++    n_selected = sum(p.numel() for p in selected)
++    msg = (
++        f"finetune_mode={mode}: trainable {n_selected:,} / {n_total:,} params "
++        f"({100 * n_selected / n_total:.2f}%)"
++    )
++    logger.info(msg)
++    print(f"[tabpfn.finetuning.peft] {msg}", flush=True)  # ensure visibility in job logs
++    return selected
+-- 
+2.34.1
+

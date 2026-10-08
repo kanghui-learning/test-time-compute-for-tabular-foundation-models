@@ -1,0 +1,17 @@
+# DiagScale adaptation followed by the 96-configuration pool + greedy selection
+# (+93 Elo). One DiagScale adapter (learning rate 1e-2, up to
+# 30 epochs) is fitted per outer cell and injected into every configuration.
+model: tabpfn3-agg-ft
+mode: full
+tag_suffix: diagscale_aggregation_96
+hyperparameters:
+  ft_mode: diagscale
+  ft_lr: 1.0e-2
+  ft_epochs: 30
+  aggregation:
+    n_configs: 96
+    seed: 0
+    n_est_val: 2
+    n_est_test: 8
+    val_folds: 8
+    n_iterations: 40

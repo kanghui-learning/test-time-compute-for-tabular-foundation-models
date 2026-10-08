@@ -1,0 +1,129 @@
+From 111319e6cae4babeb475407bffa6f5d0d6e5d0ea Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Tue, 16 Jun 2026 19:42:25 +0000
+Subject: [PATCH 5/8] finetuning: add LoRA mode (low-rank adapters) to the PEFT
+ hook
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+New finetune_mode='lora': inject_lora() wraps every nn.Linear whose MODULE name matches
+finetune_cfg['pattern'] (default '.*' = full-model LoRA) with a LoRALinear — frozen base
+plus a trainable low-rank update B@A*(alpha/r), B zero-initialized so injection is a no-op
+at start. select_trainable freezes the base and returns only the adapter params.
+
+B=0 init means a never-improved fit (best_epoch=-1) restored to its init weights reproduces
+base exactly, consistent with the base fall-back. Validated on H100: full-LoRA r=8 wraps 313
+Linear modules (3.22% trainable); 5 epochs shift predict_proba by 0.22; forced no-improvement
+under early stopping restores base predictions exactly (Δ=0).
+---
+ src/tabpfn/finetuning/peft.py | 67 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 66 insertions(+), 1 deletion(-)
+
+diff --git a/src/tabpfn/finetuning/peft.py b/src/tabpfn/finetuning/peft.py
+index 9b44a86c..2b5ae0c6 100644
+--- a/src/tabpfn/finetuning/peft.py
++++ b/src/tabpfn/finetuning/peft.py
+@@ -11,18 +11,66 @@ Modes:
+     regex   parameters whose fully-qualified name matches finetune_cfg["pattern"] — the
+             explicit form of "train only these layers"; inspect names first via
+             `[n for n, _ in estimator.model_.named_parameters()]`
++    lora    inject low-rank adapters (Hu et al. 2021) into the nn.Linear MODULES whose name
++            matches finetune_cfg["pattern"], freeze the base weights, train only the adapters.
++            finetune_cfg: {pattern, r=8, alpha=16, dropout=0.0}. NB pattern matches MODULE names
++            (e.g. "...attention.q_proj"), not parameter names — inspect via
++            `[n for n, m in estimator.model_.named_modules() if isinstance(m, torch.nn.Linear)]`.
+ """
+ from __future__ import annotations
+ 
+ import logging
++import math
+ import re
+ from typing import Any
+ 
+ import torch
++import torch.nn.functional as F
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
++class LoRALinear(torch.nn.Module):
++    """Wrap an nn.Linear with a frozen base + a trainable low-rank update B@A·(alpha/r).
++
++    B is zero-initialized so the adapter starts as a no-op (forward == base): injection is
++    therefore behavior-preserving, which also means a never-improved fit (best_epoch=-1) restored
++    to these init weights reproduces base exactly — consistent with the base fall-back.
++    """
++
++    def __init__(self, base: torch.nn.Linear, r: int, alpha: float, dropout: float):
++        super().__init__()
++        self.base = base
++        self.base.weight.requires_grad_(False)
++        if self.base.bias is not None:
++            self.base.bias.requires_grad_(False)
++        self.r = int(r)
++        self.scaling = float(alpha) / float(r)
++        w = base.weight
++        self.lora_A = torch.nn.Parameter(torch.empty(self.r, base.in_features, device=w.device, dtype=w.dtype))
++        self.lora_B = torch.nn.Parameter(torch.zeros(base.out_features, self.r, device=w.device, dtype=w.dtype))
++        torch.nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
++        self.lora_dropout = torch.nn.Dropout(dropout) if dropout and dropout > 0 else torch.nn.Identity()
++
++    def forward(self, x: torch.Tensor) -> torch.Tensor:  # base(x) + (x A^T) B^T · scaling
++        return self.base(x) + F.linear(F.linear(self.lora_dropout(x), self.lora_A), self.lora_B) * self.scaling
++
++
++def inject_lora(model: torch.nn.Module, pattern: str, r: int, alpha: float, dropout: float) -> int:
++    """Replace every nn.Linear whose module name matches `pattern` with a LoRALinear. In-place;
++    returns the number of layers wrapped."""
++    rx = re.compile(pattern)
++    targets = [
++        (n, m) for n, m in model.named_modules()
++        if isinstance(m, torch.nn.Linear) and rx.search(n)
++    ]
++    for name, lin in targets:
++        parent_path, _, attr = name.rpartition(".")
++        parent = model.get_submodule(parent_path) if parent_path else model
++        setattr(parent, attr, LoRALinear(lin, r=r, alpha=alpha, dropout=dropout))
++    return len(targets)
++
++
+ def select_trainable(
+     model: torch.nn.Module,
+     mode: str = "full",
+@@ -34,6 +82,23 @@ def select_trainable(
+ 
+     if mode == "full":
+         selected = [p for _, p in named]  # requires_grad untouched: exact upstream behavior
++    elif mode == "lora":
++        n_wrapped = inject_lora(
++            model,
++            pattern=cfg["pattern"],
++            r=int(cfg.get("r", 8)),
++            alpha=float(cfg.get("alpha", 16)),
++            dropout=float(cfg.get("dropout", 0.0)),
++        )
++        if n_wrapped == 0:
++            raise ValueError(f"finetune_mode='lora' (cfg={cfg}) matched 0 nn.Linear modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: adapters now exist
++            train = name.endswith(".lora_A") or name.endswith(".lora_B")
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        logger.info("finetune_mode=lora: wrapped %d Linear module(s)", n_wrapped)
+     else:
+         if mode == "bitfit":
+             def keep(name: str) -> bool:
+@@ -44,7 +109,7 @@ def select_trainable(
+             def keep(name: str) -> bool:
+                 return pattern.search(name) is not None
+         else:
+-            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex)")
++            raise ValueError(f"unknown finetune_mode '{mode}' (full | bitfit | regex | lora)")
+         selected = []
+         for name, param in named:
+             train = keep(name)
+-- 
+2.34.1
+

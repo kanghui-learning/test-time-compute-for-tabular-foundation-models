@@ -1,0 +1,32 @@
+From 5659e5b686bcef1f227bb5c01b00da06e35ddd09 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Sun, 14 Jun 2026 21:37:59 +0000
+Subject: [PATCH 3/8] Disable auto_scale_n_estimators in the finetuning
+ training forward
+
+The FT loss path asserts the model returns exactly n_estimators_finetune ensemble members, but auto_scale_n_estimators (default True) silently scales the ensemble up for wide datasets (n_features > 2*max_features_per_estimator), giving E != n_estimators_finetune and an AssertionError. Disable scaling only for the finetuning forward config; validation/final-inference keep auto-scaling so inference still covers all features.
+---
+ src/tabpfn/finetuning/finetuned_base.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index 2dadc7bd..676af1ea 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -601,6 +601,13 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+             base_estimator_config,
+             self.n_estimators_finetune,
+         )
++        # ttc-dev fix: the training loop asserts the forward returns exactly
++        # `n_estimators_finetune` ensemble members (see _forward_with_loss), but TabPFN's
++        # auto_scale_n_estimators (default True) silently raises the ensemble size for wide
++        # datasets (n_features > 2*max_features_per_estimator), breaking that assertion.
++        # Disable it ONLY for the finetuning forward; the validation/final-inference configs
++        # keep auto-scaling so inference still gets full feature coverage.
++        finetuning_estimator_config["auto_scale_n_estimators"] = False
+         if model_path is not None:
+             finetuning_estimator_config["model_path"] = model_path
+ 
+-- 
+2.34.1
+

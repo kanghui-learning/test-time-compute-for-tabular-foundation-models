@@ -1,0 +1,33 @@
+From bf9b2c99590bdfe9f32bdd8ede77095ec5c5bb2c Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Fri, 17 Jul 2026 03:31:30 +0000
+Subject: [PATCH 8/8] finetuning: expose best_metric_ + greater_is_better_
+ after fit
+
+So an outer per-task hyperparameter sweep (ttc.finetune.lr_sweep) can select the best
+lr on the validation metric. best_metric is the pre-FT baseline when no epoch improved
+(best_epoch_ == -1), matching the weight restore.
+---
+ src/tabpfn/finetuning/finetuned_base.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index 74d1d2ba..82bee798 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -1089,6 +1089,12 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         if self.early_stopping and best_model_state is not None:
+             self.finetuned_estimator_.model_.load_state_dict(best_model_state)
+ 
++        # ttc-dev: expose the best validation metric (+ its direction) so an outer per-task lr sweep
++        # can select the best hyperparameter by validation (see ttc.finetune.lr_sweep). best_metric
++        # is the pre-FT baseline when no epoch improved (best_epoch_ == -1), matching the restore.
++        self.best_metric_ = float(best_metric)
++        self.greater_is_better_ = self._get_initial_best_metric() == float("-inf")
++
+         # --- DDP cleanup ---
+         self._ddp_module_ = None
+         if using_ddp:
+-- 
+2.34.1
+

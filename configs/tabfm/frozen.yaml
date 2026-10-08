@@ -1,0 +1,5 @@
+# Frozen TabFM (PyTorch backend, bf16, 32 views): the 68th reference entry of the Elo protocol.
+# Feature cap: 500 features when rows x min(features, 500) <= 5M cells, otherwise 100
+# (APSFailure, kddcup09_appetency, Amazon_employee_access).
+model: tabfm
+mode: full

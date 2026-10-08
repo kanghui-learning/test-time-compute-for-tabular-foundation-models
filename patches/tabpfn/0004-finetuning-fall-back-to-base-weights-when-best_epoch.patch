@@ -1,0 +1,58 @@
+From b2cc770da342a9f63346472bc124555f4f9840b4 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Tue, 16 Jun 2026 18:53:58 +0000
+Subject: [PATCH 4/8] finetuning: fall back to base weights when best_epoch=-1
+ (early_stopping)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When no epoch beats the pre-finetuning validation metric (best_epoch_ == -1),
+the loop previously shipped the LAST (degraded) epoch's weights: best_model_state
+stayed None so the final restore never fired. Seed best_model_state with a pre-FT
+(base) CPU snapshot when early_stopping is on, so the existing restore ships base
+weights in that case. early_stopping=False is intentionally untouched (keeps the
+last-epoch weights — the fixed-epoch cost-performance trajectory relies on this).
+
+Validated end-to-end via predict_proba (the shipped inference clone): forcing
+_is_improvement->False gives early_stopping=True -> max|Δproba| vs base = 0
+(restored exactly); early_stopping=False -> 0.71 (degraded, control).
+---
+ src/tabpfn/finetuning/finetuned_base.py | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/src/tabpfn/finetuning/finetuned_base.py b/src/tabpfn/finetuning/finetuned_base.py
+index 676af1ea..74d1d2ba 100644
+--- a/src/tabpfn/finetuning/finetuned_base.py
++++ b/src/tabpfn/finetuning/finetuned_base.py
+@@ -762,10 +762,24 @@ class FinetunedTabPFNBase(BaseEstimator, ABC):
+         if is_main_process:
+             logger.info("--- 🚀 Starting Fine-tuning ---")
+         patience_counter = 0
+-        best_model_state: dict[str, torch.Tensor] | None = None
++        # best_model_state is seeded with a snapshot of the PRE-FINETUNING (base) weights so that
++        # if no epoch ever improves over the pre-FT validation metric (best_epoch_ stays -1), the
++        # restore below ships the base checkpoint rather than the last (degraded) epoch's weights.
++        # Gated on early_stopping: with early_stopping=False we intentionally keep the last-epoch
++        # weights (e.g. a fixed-epoch cost-performance trajectory), so no seed is taken. The CPU
++        # clone mirrors the per-improvement snapshot below and bounds GPU memory.
++        best_model_state: dict[str, torch.Tensor] | None = (
++            {
++                k: v.detach().cpu().clone()
++                for k, v in self.finetuned_estimator_.model_.state_dict().items()
++            }
++            if self.early_stopping
++            else None
++        )
+         # epoch bookkeeping (ttc-dev): exposed for experiment logging after fit.
+-        # best_epoch_ = -1 means no epoch ever improved over the pre-finetuning validation
+-        # (note: in that case the final weights are the LAST epoch's, not the pre-FT ones).
++        # best_epoch_ = -1 means no epoch ever improved over the pre-finetuning validation; with
++        # early_stopping on, the restore below then ships the pre-FT (base) weights, so the model
++        # is never worse than base on its own validation split.
+         self.epochs_run_ = 0
+         self.best_epoch_ = -1
+         self.stopped_early_ = False
+-- 
+2.34.1
+

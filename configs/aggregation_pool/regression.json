@@ -1,0 +1,3315 @@
+{
+ "seed": 0,
+ "n_configs": 96,
+ "problem_type": "regression",
+ "note": "Reference list: ttc.aggregation.search_space.sample(96, seed=0) must reproduce it. Configuration 0 is the default.",
+ "configs_native": [
+  {},
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_uni",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "none",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null,
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_3.0",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "numeric",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_0.3"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd",
+      "categorical_name": "none",
+      "append_original": false
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd",
+      "categorical_name": "numeric",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": null,
+      "categorical_name": "none",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 6,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "quantile_uni"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_norm_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_1.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "squashing_scaler_default",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 12,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     null
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "none",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": true
+     },
+     {
+      "name": "quantile_uni_coarse",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": 25,
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "kdi_alpha_3.0"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "kdi_alpha_0.3",
+      "global_transformer_name": "svd_quarter_components",
+      "categorical_name": "onehot",
+      "append_original": true
+     }
+    ]
+   }
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config": {
+    "OUTLIER_REMOVAL_STD": 3,
+    "POLYNOMIAL_FEATURES": "no",
+    "REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+     "safepower"
+    ],
+    "PREPROCESS_TRANSFORMS": [
+     {
+      "name": "safepower",
+      "global_transformer_name": "svd",
+      "categorical_name": "onehot",
+      "append_original": false
+     },
+     {
+      "name": "quantile_uni",
+      "global_transformer_name": null,
+      "categorical_name": "numeric",
+      "append_original": true
+     }
+    ]
+   }
+  }
+ ],
+ "configs_raw": [
+  {},
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "none"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null,
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.0,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 0.9,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "none",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.7,
+   "inference_config/OUTLIER_REMOVAL_STD": 6,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default"
+   ],
+   "preprocessing/categoricals": "numeric",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.5,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "quantile_uni"
+   ],
+   "preprocessing/scaling": [
+    "quantile_norm_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_1.0"
+   ],
+   "preprocessing/scaling": [
+    "squashing_scaler_default",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": null
+  },
+  {
+   "softmax_temperature": 0.8,
+   "inference_config/OUTLIER_REMOVAL_STD": 12,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    null
+   ],
+   "preprocessing/scaling": [
+    "none",
+    "quantile_uni_coarse"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd"
+  },
+  {
+   "softmax_temperature": 1.25,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": 25,
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "kdi_alpha_3.0"
+   ],
+   "preprocessing/scaling": [
+    "kdi_alpha_0.3"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": true,
+   "preprocessing/global": "svd_quarter_components"
+  },
+  {
+   "softmax_temperature": 0.6,
+   "inference_config/OUTLIER_REMOVAL_STD": 3,
+   "inference_config/POLYNOMIAL_FEATURES": "no",
+   "inference_config/REGRESSION_Y_PREPROCESS_TRANSFORMS": [
+    "safepower"
+   ],
+   "preprocessing/scaling": [
+    "safepower",
+    "quantile_uni"
+   ],
+   "preprocessing/categoricals": "onehot",
+   "preprocessing/append_original": false,
+   "preprocessing/global": "svd"
+  }
+ ]
+}

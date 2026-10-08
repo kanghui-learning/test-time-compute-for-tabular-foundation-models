@@ -1,0 +1,94 @@
+From d2674aab2c5b0c73e9bc3817bd22f64057e54920 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Tue, 16 Jun 2026 20:43:23 +0000
+Subject: [PATCH 6/8] finetuning: make LoRA adapter init reproducible + guard
+ rails
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+inject_lora now seeds the adapter init (kaiming on lora_A) to finetune_cfg['seed']
+inside a fork_rng, so it is deterministic given the fit's random_state WITHOUT perturbing
+the global RNG the training loop relies on. Previously lora_A drew from the un-seeded global
+RNG (injection runs at finetuned_base.py:709, before infer_random_state at :757), so an
+identical random_state produced different adapters across runs (non-reproducible LoRA).
+
+Also: LoRALinear rejects r<=0 (was a ZeroDivisionError on alpha/r); the lora branch raises if
+it wraps Linears but selects 0 adapter params (parity with the regex/bitfit empty-select guard).
+
+Validated on H100: two same-seed LoRA fits now give bit-identical predict_proba (Δ=0; was
+~0.25); LoRA still learns (Δ 0.25 vs base) and the best_epoch=-1 base fall-back holds (Δ=0).
+---
+ src/tabpfn/finetuning/peft.py | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/src/tabpfn/finetuning/peft.py b/src/tabpfn/finetuning/peft.py
+index 2b5ae0c6..3b71db87 100644
+--- a/src/tabpfn/finetuning/peft.py
++++ b/src/tabpfn/finetuning/peft.py
+@@ -40,6 +40,8 @@ class LoRALinear(torch.nn.Module):
+ 
+     def __init__(self, base: torch.nn.Linear, r: int, alpha: float, dropout: float):
+         super().__init__()
++        if int(r) <= 0:
++            raise ValueError(f"LoRA rank must be a positive int, got r={r!r}")
+         self.base = base
+         self.base.weight.requires_grad_(False)
+         if self.base.bias is not None:
+@@ -56,18 +58,30 @@ class LoRALinear(torch.nn.Module):
+         return self.base(x) + F.linear(F.linear(self.lora_dropout(x), self.lora_A), self.lora_B) * self.scaling
+ 
+ 
+-def inject_lora(model: torch.nn.Module, pattern: str, r: int, alpha: float, dropout: float) -> int:
++def inject_lora(
++    model: torch.nn.Module, pattern: str, r: int, alpha: float, dropout: float, seed: int = 0
++) -> int:
+     """Replace every nn.Linear whose module name matches `pattern` with a LoRALinear. In-place;
+-    returns the number of layers wrapped."""
++    returns the number of layers wrapped.
++
++    The adapter init (kaiming on lora_A) is made reproducible by seeding the RNG to `seed` for the
++    duration of injection, inside a fork_rng so the global RNG the training loop later relies on is
++    left untouched. Without this, lora_A would draw from the un-seeded global RNG (injection runs
++    before infer_random_state), so identical random_state gave different adapters across runs.
++    """
+     rx = re.compile(pattern)
+     targets = [
+         (n, m) for n, m in model.named_modules()
+         if isinstance(m, torch.nn.Linear) and rx.search(n)
+     ]
+-    for name, lin in targets:
+-        parent_path, _, attr = name.rpartition(".")
+-        parent = model.get_submodule(parent_path) if parent_path else model
+-        setattr(parent, attr, LoRALinear(lin, r=r, alpha=alpha, dropout=dropout))
++    cuda_idx = sorted({p.device.index for p in model.parameters()
++                       if p.is_cuda and p.device.index is not None})
++    with torch.random.fork_rng(devices=cuda_idx, enabled=True):
++        torch.manual_seed(int(seed))
++        for name, lin in targets:
++            parent_path, _, attr = name.rpartition(".")
++            parent = model.get_submodule(parent_path) if parent_path else model
++            setattr(parent, attr, LoRALinear(lin, r=r, alpha=alpha, dropout=dropout))
+     return len(targets)
+ 
+ 
+@@ -89,6 +103,7 @@ def select_trainable(
+             r=int(cfg.get("r", 8)),
+             alpha=float(cfg.get("alpha", 16)),
+             dropout=float(cfg.get("dropout", 0.0)),
++            seed=int(cfg.get("seed", 0)),
+         )
+         if n_wrapped == 0:
+             raise ValueError(f"finetune_mode='lora' (cfg={cfg}) matched 0 nn.Linear modules")
+@@ -98,6 +113,8 @@ def select_trainable(
+             param.requires_grad_(train)
+             if train:
+                 selected.append(param)
++        if not selected:  # wrapped Linears but no adapter params — should never happen, guard anyway
++            raise ValueError(f"finetune_mode='lora' wrapped {n_wrapped} module(s) but selected 0 params")
+         logger.info("finetune_mode=lora: wrapped %d Linear module(s)", n_wrapped)
+     else:
+         if mode == "bitfit":
+-- 
+2.34.1
+

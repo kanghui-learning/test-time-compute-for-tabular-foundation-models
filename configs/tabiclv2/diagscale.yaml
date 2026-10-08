@@ -1,0 +1,12 @@
+# TabICL v2 DiagScale (+82 Elo). A zero-initialized diagonal
+# multiplier on the final query of every attention module. Learning rate 3e-2; other settings
+# as in full_ft.yaml.
+model: tabiclv2-ft
+mode: full
+tag_suffix: diagscale
+hyperparameters:
+  ft_mode: diagscale
+  ft_lr: 3.0e-2
+  ft_wd: 0.01
+  ft_epochs: 30
+  ft_deploy_n_estimators: 8

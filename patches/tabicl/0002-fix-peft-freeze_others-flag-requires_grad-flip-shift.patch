@@ -1,0 +1,92 @@
+From 1703035ca253f68c3c256ee9cb6d04140154839c Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Thu, 9 Jul 2026 03:54:46 +0000
+Subject: [PATCH 2/3] =?UTF-8?q?fix(peft):=20freeze=5Fothers=20flag=20?=
+ =?UTF-8?q?=E2=80=94=20requires=5Fgrad=20flip=20shifts=20CUDA=20train-mode?=
+ =?UTF-8?q?=20forward?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Freezing backbone params (requires_grad_(False)) deterministically changes the
+GPU train-mode forward through col_embedder by ~5e-3 at delta=0 (flag-keyed
+kernel selection; CPU bit-exact; bisected: col_embedder + train-mode only,
+inject itself is exact; minimal 4D F.linear repro does NOT reproduce, exact op
+not pinned). select_trainable(freeze_others=False) keeps flag parity with the
+unfrozen model; callers optimize only the returned params. +1 test (11 passed).
+---
+ src/tabicl/_model/peft.py | 18 +++++++++++++++---
+ tests/test_peft.py        | 12 ++++++++++++
+ 2 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/src/tabicl/_model/peft.py b/src/tabicl/_model/peft.py
+index 298e98c..05f1c2b 100644
+--- a/src/tabicl/_model/peft.py
++++ b/src/tabicl/_model/peft.py
+@@ -108,9 +108,19 @@ def inject_ia3(model: torch.nn.Module, pattern: str, parts: tuple = ("k", "v", "
+ def select_trainable(
+     model: torch.nn.Module,
+     mode: str = "full",
++    freeze_others: bool = True,
+     **cfg: Any,
+ ) -> list[torch.nn.Parameter]:
+-    """Freeze/unfreeze ``model``'s parameters per ``mode``; return the trainables."""
++    """Freeze/unfreeze ``model``'s parameters per ``mode``; return the trainables.
++
++    ``freeze_others=False`` (adapter modes only) selects the same trainable set but
++    leaves every backbone parameter's requires_grad flag untouched. On CUDA, flipping
++    requires_grad on the col_embedder's parameters deterministically shifts the
++    train-mode forward by ~5e-3 even at delta=0 (kernel selection keyed on the flag
++    somewhere in that path; CPU is bit-exact, exact op not pinned down) — a caller
++    that trains only the returned parameters anyway can keep flag parity with the
++    unfrozen model and stay bit-exact at injection.
++    """
+     named = list(model.named_parameters())
+     n_total = sum(p.numel() for _, p in named)
+ 
+@@ -123,7 +133,8 @@ def select_trainable(
+         selected = []
+         for name, param in model.named_parameters():  # re-enumerate: deltas now exist
+             train = name.endswith(".diag_delta")
+-            param.requires_grad_(train)
++            if freeze_others:
++                param.requires_grad_(train)
+             if train:
+                 selected.append(param)
+         if not selected:
+@@ -137,7 +148,8 @@ def select_trainable(
+         selected = []
+         for name, param in model.named_parameters():  # re-enumerate: deltas now exist
+             train = any(name.endswith(f".ia3_delta_{p}") for p in ("k", "v", "ff"))
+-            param.requires_grad_(train)
++            if freeze_others:
++                param.requires_grad_(train)
+             if train:
+                 selected.append(param)
+         if not selected:
+diff --git a/tests/test_peft.py b/tests/test_peft.py
+index dfd9012..48cc0d3 100644
+--- a/tests/test_peft.py
++++ b/tests/test_peft.py
+@@ -131,6 +131,18 @@ def test_gradient_flow_to_delta_only():
+     assert all(g is None for g in frozen)
+ 
+ 
++def test_select_trainable_no_freeze():
++    model = make_model()
++    flags_before = {n: p.requires_grad for n, p in model.named_parameters()}
++    selected = select_trainable(model, mode="diagscale", pattern=".", freeze_others=False)
++    expected = sum(m.embed_dim for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++    assert sum(p.numel() for p in selected) == expected
++    # backbone flags untouched (kernel parity with the unfrozen model on CUDA);
++    # note rope.freqs is requires_grad=False by construction, so compare, not all-True
++    for n, p in model.named_parameters():
++        assert p.requires_grad == flags_before.get(n, True), n
++
++
+ def test_state_dict_roundtrip():
+     model_a = make_model()
+     inject_diagscale(model_a, ".")
+-- 
+2.34.1
+

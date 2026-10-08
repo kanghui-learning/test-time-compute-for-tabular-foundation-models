@@ -1,0 +1,16 @@
+# Smoke test for configs/tabpfn3/diagscale_aggregation_96.yaml: debug mode (diabetes + airfoil_self_noise),
+# identical hyperparameters, but only 4 configurations in the pool.
+model: tabpfn3-agg-ft
+mode: debug
+tag_suffix: smoke_tabpfn3_diagscale_aggregation_96
+hyperparameters:
+  ft_mode: diagscale
+  ft_lr: 0.01
+  ft_epochs: 30
+  aggregation:
+    n_configs: 4
+    seed: 0
+    n_est_val: 2
+    n_est_test: 8
+    val_folds: 8
+    n_iterations: 40

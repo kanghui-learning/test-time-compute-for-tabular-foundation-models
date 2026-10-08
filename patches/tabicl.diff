@@ -1,0 +1,529 @@
+diff --git a/src/tabicl/_model/attention.py b/src/tabicl/_model/attention.py
+index a2b4e35..af5d995 100644
+--- a/src/tabicl/_model/attention.py
++++ b/src/tabicl/_model/attention.py
+@@ -53,6 +53,7 @@ def sdpa_with_flattened_batch(
+     attn_mask: Optional[Tensor] = None,
+     dropout_p: float = 0.0,
+     ssmax_layer: Optional[nn.Module] = None,
++    diag_delta: Optional[Tensor] = None,
+ ) -> Tensor:
+     """Applies scaled dot-product attention with flattened batch dimensions.
+ 
+@@ -87,6 +88,12 @@ def sdpa_with_flattened_batch(
+         If provided, applies scalable softmax (SSMax) scaling to queries before
+         attention computation.
+ 
++    diag_delta : Optional[Tensor], default=None
++        Diagscale adapter (ttc fork addition): a (nh, 1, hs) multiplier applied
++        to the final query as ``q * (1 + diag_delta)``. Applied after any SSMax
++        scaling so the attention logit is exactly a diagonal reweighting of the
++        bilinear form seen by SDPA. Zero-init deltas leave behavior unchanged.
++
+     Returns
+     -------
+     Tensor
+@@ -105,6 +112,10 @@ def sdpa_with_flattened_batch(
+         src_len = k.size(-2)
+         q = ssmax_layer(q, src_len)
+ 
++    # Must come after ssmax: qassmax's query_mlp has to see the unmodified q
++    if diag_delta is not None:
++        q = q * (1.0 + diag_delta).to(q.dtype)
++
+     # FlashAttn3 doesn't support dropout and custom attention mask
+     if HAS_FLASH_ATTN3 and _use_flash_attn3 and q.is_cuda and attn_mask is None and dropout_p == 0.0:
+         # FlashAttention only supports fp16, bf16, and fp8_e4m3
+@@ -146,6 +157,9 @@ def multi_head_attention_forward(
+     attn_mask: Optional[Tensor] = None,
+     rope: Optional[RotaryEmbedding] = None,
+     ssmax_layer: Optional[nn.Module] = None,
++    diag_delta: Optional[Tensor] = None,
++    ia3_delta_k: Optional[Tensor] = None,
++    ia3_delta_v: Optional[Tensor] = None,
+     need_kv: bool = False,
+ ) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor]]:
+     """Multi-head attention with support for rotary position embeddings.
+@@ -211,6 +225,19 @@ def multi_head_attention_forward(
+         If provided, applies scalable softmax (SSMax) scaling to queries before
+         attention computation.
+ 
++    diag_delta : Optional[Tensor], default=None
++        Diagscale adapter (ttc fork addition): (num_heads, 1, head_dim)
++        multiplier on the final query, applied inside
++        ``sdpa_with_flattened_batch`` after any SSMax scaling.
++
++    ia3_delta_k : Optional[Tensor], default=None
++        (IA)3 key adapter (ttc fork addition): (num_heads, 1, head_dim)
++        multiplier ``k * (1 + ia3_delta_k)`` on the final keys (post-RoPE).
++
++    ia3_delta_v : Optional[Tensor], default=None
++        (IA)3 value adapter (ttc fork addition): (num_heads, 1, head_dim)
++        multiplier ``v * (1 + ia3_delta_v)`` on the values.
++
+     need_kv : bool, default=False
+         If True and ``cached_kv`` is None, also returns the computed K and V
+         projections along with the attention output. Useful for caching K/V for
+@@ -258,6 +285,15 @@ def multi_head_attention_forward(
+         if rope is not None:
+             q = rope.rotate_queries_or_keys(q)
+ 
++    # (IA)3 adapters rescale the final K/V after projection (and RoPE for K). The rescale runs on
++    # BOTH the fresh-projection and cached-KV paths, so the need_kv return below must hand back the
++    # PRE-rescale tensors — a cache holding rescaled K/V would get (1+delta)^2 on every reuse.
++    k_raw, v_raw = k, v
++    if ia3_delta_k is not None:
++        k = k * (1.0 + ia3_delta_k).to(k.dtype)
++    if ia3_delta_v is not None:
++        v = v * (1.0 + ia3_delta_v).to(v.dtype)
++
+     # Disable dropout during evaluation
+     if not training:
+         dropout_p = 0.0
+@@ -295,7 +331,7 @@ def multi_head_attention_forward(
+             attn_mask = attn_mask + key_padding_mask
+ 
+     attn_output = sdpa_with_flattened_batch(
+-        q, k, v, attn_mask, dropout_p, ssmax_layer=ssmax_layer
++        q, k, v, attn_mask, dropout_p, ssmax_layer=ssmax_layer, diag_delta=diag_delta
+     )  # (..., nh, tgt_len, hs)
+ 
+     # Reshape and project output
+@@ -303,6 +339,6 @@ def multi_head_attention_forward(
+     attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)  # (batch_shape, tgt_len, E)
+ 
+     if need_kv and cached_kv is None:
+-        return attn_output, k, v
++        return attn_output, k_raw, v_raw
+ 
+     return attn_output
+diff --git a/src/tabicl/_model/layers.py b/src/tabicl/_model/layers.py
+index 02034d1..0e81a3e 100644
+--- a/src/tabicl/_model/layers.py
++++ b/src/tabicl/_model/layers.py
+@@ -186,6 +186,12 @@ class MultiheadAttention(nn.MultiheadAttention):
+         if isinstance(ssmax, bool):
+             ssmax = "qassmax-mlp-elementwise" if ssmax else "none"
+         self.ssmax_layer = create_ssmax_layer(ssmax_type=ssmax, num_heads=num_heads, embed_dim=embed_dim)
++        # PEFT adapter slots (ttc fork addition); plain None attributes so
++        # pretrained checkpoints keep loading with strict=True until
++        # peft.inject_* replaces them with nn.Parameters
++        self.diag_delta = None
++        self.ia3_delta_k = None
++        self.ia3_delta_v = None
+ 
+     def forward(
+         self,
+@@ -282,6 +288,9 @@ class MultiheadAttention(nn.MultiheadAttention):
+             attn_mask=attn_mask,
+             rope=rope,
+             ssmax_layer=self.ssmax_layer,
++            diag_delta=self.diag_delta,
++            ia3_delta_k=self.ia3_delta_k,
++            ia3_delta_v=self.ia3_delta_v,
+             need_kv=need_kv,
+         )
+ 
+@@ -351,6 +360,8 @@ class MultiheadAttentionBlock(nn.TransformerEncoderLayer):
+ 
+         del self.self_attn
+         self.attn = MultiheadAttention(d_model, nhead, dropout, ssmax)
++        # (IA)3 FFN adapter slot (ttc fork addition), see MultiheadAttention
++        self.ia3_delta_ff = None
+         if zero_init:
+             self.init_weights()
+ 
+@@ -521,8 +532,10 @@ class MultiheadAttentionBlock(nn.TransformerEncoderLayer):
+         return self.dropout1(result)
+ 
+     def _ff_block(self, x: Tensor) -> Tensor:
+-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+-        return self.dropout2(x)
++        h = self.dropout(self.activation(self.linear1(x)))
++        if self.ia3_delta_ff is not None:
++            h = h * (1.0 + self.ia3_delta_ff).to(h.dtype)
++        return self.dropout2(self.linear2(h))
+ 
+ 
+ class InducedSelfAttentionBlock(nn.Module):
+diff --git a/src/tabicl/_model/peft.py b/src/tabicl/_model/peft.py
+new file mode 100644
+index 0000000..aa42026
+--- /dev/null
++++ b/src/tabicl/_model/peft.py
+@@ -0,0 +1,182 @@
++"""Parameter-selection hooks for PEFT-style finetuning of TabICL
++(ttc diagscale fork addition, mirroring the tabfm fork's pytorch/peft.py).
++
++select_trainable() decides which parameters a finetuning optimizer sees;
++everything else is frozen (requires_grad=False).
++
++Modes:
++    full       all parameters, requires_grad untouched (plain full finetuning)
++    regex      parameters whose fully-qualified name matches cfg["pattern"]
++    diagscale  inject a fresh per-(head, dim) multiplier 1+delta on the query of
++               every MultiheadAttention whose MODULE name matches
++               cfg["pattern"], then train ONLY the deltas. delta is
++               zero-initialized so injection is behavior-preserving (the model
++               reproduces the pretrained model exactly until training moves
++               delta). The multiplier is applied to the final query right
++               before SDPA — after RoPE and any SSMax scaling — so the
++               attention logit is exactly a learned diagonal reweighting of
++               the similarity bilinear form: q̃·k = qᵀ diag(1+δ) k.
++    ia3        (IA)3 (Liu et al. 2022) baseline: 1+delta multipliers on the
++               final keys / values and/or the FFN intermediate activation,
++               cfg["parts"] ⊆ {"k","v","ff"} (default all three). Same
++               zero-init delta convention as diagscale so lr/wd sweeps are
++               comparable; the k part is logit-equivalent to diagscale's
++               q-side delta.
++
++Useful patterns (module names of the released TabICL v2 checkpoints):
++    "."                    all 21 attention modules
++    r"^col_embedder\\."     the column embedder's set transformer (6 modules) —
++                           the most upstream attention that reads train rows
++    r"^icl_predictor\\."    the 12 ICL blocks attending over train rows
++"""
++
++from __future__ import annotations
++
++import logging
++import re
++from typing import Any
++
++import torch
++
++from .layers import MultiheadAttention, MultiheadAttentionBlock
++
++logger = logging.getLogger(__name__)
++
++
++def inject_diagscale(model: torch.nn.Module, pattern: str) -> int:
++    """Register a zero-init diag_delta (num_heads, 1, head_dim) on every
++    MultiheadAttention whose module name matches ``pattern``. In-place;
++    returns the number of modules injected.
++
++    delta is created float32 regardless of the backbone dtype (the forward
++    casts 1+delta to the compute dtype), so tiny optimizer updates are not
++    lost to low-precision rounding. No RNG needed (deterministic zero-init).
++    """
++    rx = re.compile(pattern)
++    targets = [(n, m) for n, m in model.named_modules() if isinstance(m, MultiheadAttention) and rx.search(n)]
++    for name, mod in targets:
++        if mod.diag_delta is not None:
++            raise ValueError(f"diagscale already injected at {name!r}")
++        mod.diag_delta = torch.nn.Parameter(
++            torch.zeros(mod.num_heads, 1, mod.head_dim, device=mod.in_proj_weight.device, dtype=torch.float32)
++        )
++    return len(targets)
++
++
++def inject_ia3(model: torch.nn.Module, pattern: str, parts: tuple = ("k", "v", "ff")) -> int:
++    """(IA)3 (Liu et al. 2022) adapters as zero-init deltas: 1+delta multipliers
++    on the final keys / values ((num_heads, 1, head_dim)) and/or the FFN
++    intermediate activation ((dim_feedforward,)). ``pattern`` matches module
++    names; ``parts`` selects which of k / v / ff to inject. Returns the number
++    of injected tensors.
++
++    Zero-init deltas (rather than the paper's ones-init vectors) keep the
++    multiplier identity at start AND give AdamW weight decay the correct prior
++    (pull toward the pretrained model, not toward a zero function) —
++    consistent with diagscale, so lr/wd sweeps are directly comparable across
++    the two adapter families.
++    """
++    rx = re.compile(pattern)
++    n = 0
++    if "k" in parts or "v" in parts:
++        for name, mod in model.named_modules():
++            if isinstance(mod, MultiheadAttention) and rx.search(name):
++                shape = (mod.num_heads, 1, mod.head_dim)
++                device = mod.in_proj_weight.device
++                if "k" in parts:
++                    if mod.ia3_delta_k is not None:
++                        raise ValueError(f"ia3 (k) already injected at {name!r}")
++                    mod.ia3_delta_k = torch.nn.Parameter(torch.zeros(*shape, device=device, dtype=torch.float32))
++                    n += 1
++                if "v" in parts:
++                    if mod.ia3_delta_v is not None:
++                        raise ValueError(f"ia3 (v) already injected at {name!r}")
++                    mod.ia3_delta_v = torch.nn.Parameter(torch.zeros(*shape, device=device, dtype=torch.float32))
++                    n += 1
++    if "ff" in parts:
++        for name, mod in model.named_modules():
++            if isinstance(mod, MultiheadAttentionBlock) and rx.search(name):
++                if mod.ia3_delta_ff is not None:
++                    raise ValueError(f"ia3 (ff) already injected at {name!r}")
++                mod.ia3_delta_ff = torch.nn.Parameter(
++                    torch.zeros(mod.linear2.in_features, device=mod.linear2.weight.device, dtype=torch.float32)
++                )
++                n += 1
++    return n
++
++
++def select_trainable(
++    model: torch.nn.Module,
++    mode: str = "full",
++    freeze_others: bool = True,
++    **cfg: Any,
++) -> list[torch.nn.Parameter]:
++    """Freeze/unfreeze ``model``'s parameters per ``mode``; return the trainables.
++
++    ``freeze_others=False`` (adapter modes only) selects the same trainable set but
++    leaves every backbone parameter's requires_grad flag untouched. On CUDA, flipping
++    requires_grad on the col_embedder's parameters deterministically shifts the
++    train-mode forward by ~5e-3 even at delta=0 (kernel selection keyed on the flag
++    somewhere in that path; CPU is bit-exact, exact op not pinned down) — a caller
++    that trains only the returned parameters anyway can keep flag parity with the
++    unfrozen model and stay bit-exact at injection.
++    """
++    named = list(model.named_parameters())
++    n_total = sum(p.numel() for _, p in named)
++
++    if mode == "full":
++        # requires_grad untouched; skip params that are non-trainable by design
++        # (each RotaryEmbedding's freqs when learned_freq=False)
++        selected = [p for _, p in named if p.requires_grad]
++    elif mode == "diagscale":
++        n_injected = inject_diagscale(model, pattern=cfg["pattern"])
++        if n_injected == 0:
++            raise ValueError(f"finetune_mode='diagscale' (cfg={cfg}) matched 0 MultiheadAttention modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: deltas now exist
++            train = name.endswith(".diag_delta")
++            if freeze_others:
++                param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='diagscale' injected {n_injected} module(s) but selected 0 params")
++        logger.info("finetune_mode=diagscale: injected %d attention module(s)", n_injected)
++    elif mode == "ia3":
++        parts = tuple(cfg.get("parts", ("k", "v", "ff")))
++        n_injected = inject_ia3(model, pattern=cfg.get("pattern", "."), parts=parts)
++        if n_injected == 0:
++            raise ValueError(f"finetune_mode='ia3' (cfg={cfg}) matched 0 modules")
++        selected = []
++        for name, param in model.named_parameters():  # re-enumerate: deltas now exist
++            train = any(name.endswith(f".ia3_delta_{p}") for p in ("k", "v", "ff"))
++            if freeze_others:
++                param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='ia3' injected {n_injected} tensor(s) but selected 0 params")
++        logger.info("finetune_mode=ia3: injected %d tensor(s) (parts=%s)", n_injected, parts)
++    elif mode == "regex":
++        if not freeze_others:
++            raise ValueError("freeze_others=False is only supported for adapter modes (diagscale/ia3)")
++        rx = re.compile(cfg["pattern"])
++        selected = []
++        for name, param in named:
++            train = rx.search(name) is not None
++            param.requires_grad_(train)
++            if train:
++                selected.append(param)
++        if not selected:
++            raise ValueError(f"finetune_mode='regex' (cfg={cfg}) selected 0 parameters")
++    else:
++        raise ValueError(f"unknown finetune_mode {mode!r} (full | regex | diagscale | ia3)")
++
++    n_selected = sum(p.numel() for p in selected)
++    msg = (
++        f"finetune_mode={mode}: trainable {n_selected:,} / {n_total:,} params "
++        f"({100 * n_selected / n_total:.4f}%)"
++    )
++    logger.info(msg)
++    print(f"[tabicl.peft] {msg}", flush=True)  # visibility in job logs
++    return selected
+diff --git a/tests/test_peft.py b/tests/test_peft.py
+new file mode 100644
+index 0000000..2179bad
+--- /dev/null
++++ b/tests/test_peft.py
+@@ -0,0 +1,187 @@
++"""Tests for the diagscale / (IA)3 PEFT adapters (ttc fork addition).
++
++The load-bearing property is identity-at-injection: a zero-init delta must
++leave the pretrained model's outputs bit-exactly unchanged, on the same
++forward path the finetuner uses (including qassmax ssmax layers).
++"""
++
++import pytest
++import torch
++
++from tabicl._model.tabicl import TabICL
++from tabicl._model.layers import MultiheadAttention, MultiheadAttentionBlock
++from tabicl._model.peft import inject_diagscale, inject_ia3, select_trainable
++
++
++def make_model(**kwargs) -> TabICL:
++    torch.manual_seed(0)
++    defaults = dict(
++        max_classes=4,
++        embed_dim=32,
++        col_num_blocks=1,
++        col_nhead=2,
++        col_num_inds=8,
++        row_num_blocks=1,
++        row_nhead=2,
++        icl_num_blocks=2,
++        icl_nhead=2,
++        # random (not zeroed) out_proj/linear2 so adapters influence outputs
++        zero_init=False,
++    )
++    defaults.update(kwargs)
++    return TabICL(**defaults).eval()
++
++
++def make_batch(n_rows=24, n_features=5, train_size=16, n_classes=3):
++    g = torch.Generator().manual_seed(1)
++    X = torch.randn(1, n_rows, n_features, generator=g)
++    y_train = torch.randint(0, n_classes, (1, train_size), generator=g).float()
++    return X, y_train
++
++
++def forward(model, X, y_train):
++    with torch.no_grad():
++        return model(X, y_train)
++
++
++def n_attention_modules(model):
++    return sum(1 for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++
++
++def test_diagscale_identity_at_init():
++    model = make_model()
++    X, y_train = make_batch()
++    before = forward(model, X, y_train)
++    n = inject_diagscale(model, ".")
++    assert n == n_attention_modules(model)
++    after = forward(model, X, y_train)
++    assert torch.equal(before, after)
++
++
++def test_ia3_identity_at_init():
++    model = make_model()
++    X, y_train = make_batch()
++    before = forward(model, X, y_train)
++    inject_ia3(model, ".", parts=("k", "v", "ff"))
++    after = forward(model, X, y_train)
++    assert torch.equal(before, after)
++
++
++def test_nonzero_delta_changes_output():
++    model = make_model()
++    X, y_train = make_batch()
++    before = forward(model, X, y_train)
++    inject_diagscale(model, ".")
++    with torch.no_grad():
++        for _, m in model.named_modules():
++            if isinstance(m, MultiheadAttention):
++                m.diag_delta.fill_(0.3)
++    after = forward(model, X, y_train)
++    assert not torch.allclose(before, after)
++
++
++def test_injection_counts_and_scopes():
++    model = make_model()
++    # col: 2 attentions per ISAB block, row: 1 per block, icl: 1 per block
++    assert n_attention_modules(model) == 2 * 1 + 1 + 2
++    assert inject_diagscale(model, r"^icl_predictor\.") == 2
++    assert inject_diagscale(model, r"^col_embedder\.") == 2
++    assert inject_diagscale(model, r"^row_interactor\.") == 1
++
++
++def test_double_injection_raises():
++    model = make_model()
++    inject_diagscale(model, r"^icl_predictor\.")
++    with pytest.raises(ValueError, match="already injected"):
++        inject_diagscale(model, ".")
++
++
++def test_select_trainable_diagscale():
++    model = make_model()
++    selected = select_trainable(model, mode="diagscale", pattern=".")
++    expected = sum(m.embed_dim for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++    assert sum(p.numel() for p in selected) == expected
++    for name, p in model.named_parameters():
++        assert p.requires_grad == name.endswith(".diag_delta")
++
++
++def test_select_trainable_ia3_parts():
++    model = make_model()
++    n_attn = n_attention_modules(model)
++    n_blocks = sum(1 for _, m in model.named_modules() if isinstance(m, MultiheadAttentionBlock))
++    n = inject_ia3(model, ".", parts=("k", "ff"))
++    assert n == n_attn + n_blocks
++    ks = [p for name, p in model.named_parameters() if name.endswith(".ia3_delta_k")]
++    vs = [p for name, p in model.named_parameters() if name.endswith(".ia3_delta_v")]
++    ffs = [p for name, p in model.named_parameters() if name.endswith(".ia3_delta_ff")]
++    assert len(ks) == n_attn and len(vs) == 0 and len(ffs) == n_blocks
++
++
++def test_gradient_flow_to_delta_only():
++    model = make_model()
++    select_trainable(model, mode="diagscale", pattern=".")
++    model.train()
++    X, y_train = make_batch()
++    out = model(X, y_train)
++    out.sum().backward()
++    grads = [p.grad for name, p in model.named_parameters() if name.endswith(".diag_delta")]
++    assert all(g is not None for g in grads)
++    assert any(g.abs().sum() > 0 for g in grads)
++    frozen = [p.grad for name, p in model.named_parameters() if not name.endswith(".diag_delta")]
++    assert all(g is None for g in frozen)
++
++
++def test_select_trainable_no_freeze():
++    model = make_model()
++    flags_before = {n: p.requires_grad for n, p in model.named_parameters()}
++    selected = select_trainable(model, mode="diagscale", pattern=".", freeze_others=False)
++    expected = sum(m.embed_dim for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++    assert sum(p.numel() for p in selected) == expected
++    # backbone flags untouched (kernel parity with the unfrozen model on CUDA);
++    # note rope.freqs is requires_grad=False by construction, so compare, not all-True
++    for n, p in model.named_parameters():
++        assert p.requires_grad == flags_before.get(n, True), n
++
++
++def test_ia3_cached_kv_matches_fresh_path():
++    # the KV cache must store PRE-rescale projections: with nonzero ia3 deltas the
++    # cached path must reproduce the fresh path exactly once (not (1+delta)^2)
++    from tabicl._model.kv_cache import KVCacheEntry
++
++    model = make_model()
++    inject_ia3(model, ".", parts=("k", "v"))
++    with torch.no_grad():
++        for _, m in model.named_modules():
++            if isinstance(m, MultiheadAttention):
++                m.ia3_delta_k.fill_(0.3)
++                m.ia3_delta_v.fill_(-0.2)
++    mha = next(m for _, m in model.named_modules() if isinstance(m, MultiheadAttention))
++    g = torch.Generator().manual_seed(2)
++    q = torch.randn(1, 6, mha.embed_dim, generator=g)
++    kv = torch.randn(1, 10, mha.embed_dim, generator=g)
++    with torch.no_grad():
++        fresh, k_cache, v_cache = mha(q, kv, kv, need_kv=True)
++        cached = mha(q, cached_kv=KVCacheEntry(key=k_cache, value=v_cache))
++    assert torch.allclose(fresh, cached, atol=1e-6)
++
++
++def test_state_dict_roundtrip():
++    model_a = make_model()
++    inject_diagscale(model_a, ".")
++    with torch.no_grad():
++        for _, m in model_a.named_modules():
++            if isinstance(m, MultiheadAttention):
++                m.diag_delta.fill_(0.1)
++    model_b = make_model()
++    inject_diagscale(model_b, ".")
++    model_b.load_state_dict(model_a.state_dict(), strict=True)
++    X, y_train = make_batch()
++    assert torch.equal(forward(model_a, X, y_train), forward(model_b, X, y_train))
++
++
++def test_pretrained_state_dict_loads_without_adapters():
++    # adapter slots must not appear in state_dict before injection, so
++    # released checkpoints keep loading with strict=True
++    model = make_model()
++    assert not any("delta" in k for k in model.state_dict())
++    model.load_state_dict(make_model().state_dict(), strict=True)

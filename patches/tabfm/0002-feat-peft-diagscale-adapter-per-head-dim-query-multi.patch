@@ -1,0 +1,311 @@
+From 8bb94867f0583271674b4ab1ad09de9c0d13d44a Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Tue, 7 Jul 2026 22:53:52 +0000
+Subject: [PATCH 2/3] =?UTF-8?q?feat(peft):=20diagscale=20adapter=20?=
+ =?UTF-8?q?=E2=80=94=20per-(head,dim)=20query=20multiplier=201+delta?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Port of the TabPFN-3 diagscale PEFT recipe (learned diagonal similarity
+metric) to the PyTorch TabFM. inject_diagscale registers a zero-init
+delta [nhead, hd] on matched MultiheadAttention modules; the forward
+multiplies the FINAL query (after RoPE / q-RMSNorm / per_dim_scale,
+before SDPA-at-scale-1.0) by 1+delta, so q̃·k = qᵀ diag(1+δ) k exactly
+and injection is behavior-preserving at init. select_trainable(mode=
+full|regex|diagscale) picks the optimizer's params, mirroring the
+tabpfn fork's finetuning/peft.py.
+---
+ tabfm/src/pytorch/model.py     |  10 +++
+ tabfm/src/pytorch/peft.py      | 118 +++++++++++++++++++++++++++++++
+ tabfm/src/pytorch/peft_test.py | 125 +++++++++++++++++++++++++++++++++
+ 3 files changed, 253 insertions(+)
+ create mode 100644 tabfm/src/pytorch/peft.py
+ create mode 100644 tabfm/src/pytorch/peft_test.py
+
+diff --git a/tabfm/src/pytorch/model.py b/tabfm/src/pytorch/model.py
+index 0accc02..f783054 100644
+--- a/tabfm/src/pytorch/model.py
++++ b/tabfm/src/pytorch/model.py
+@@ -100,6 +100,11 @@ class MultiheadAttention(nn.Module):
+     self.query_ln = RMSNorm(self.hd)
+     self.key_ln = RMSNorm(self.hd)
+     self.per_dim_scale = nn.Parameter(torch.zeros(self.hd))
++    # Optional diagscale PEFT adapter (see peft.py): a per-(head,dim) query
++    # multiplier 1+delta, zero-init at injection time so it starts as a no-op.
++    # Plain None here (not a Parameter) so checkpoints load strict=True; the
++    # parameter only exists after peft.inject_diagscale.
++    self.diag_delta = None
+ 
+   def forward(self, query, key, value, attn_mask=None, rope=None):
+     b, tq, d = query.shape
+@@ -117,6 +122,11 @@ class MultiheadAttention(nn.Module):
+     # per-dim scale in float32 (softplus), then cast to compute dtype -- matches JAX PerDimScale.
+     scale = 1.442695041 / math.sqrt(self.hd) * F.softplus(self.per_dim_scale.float())
+     q = q * scale.to(q.dtype)
++    if self.diag_delta is not None:
++      # diagscale PEFT: diagonal similarity metric on the FINAL query (after
++      # RoPE/RMSNorm/per_dim_scale, before SDPA-at-scale-1.0), so that
++      # q̃·k = qᵀ diag(1+δ) k exactly. delta: [nhead, hd] broadcast over [B,T,N,D].
++      q = q * (1.0 + self.diag_delta).to(q.dtype)
+     q, k, v = (z.transpose(1, 2) for z in (q, k, v))  # [B,N,T,D]
+     # bf16 SDPA (flash already does the softmax in float32 internally).
+     o = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, scale=1.0)
+diff --git a/tabfm/src/pytorch/peft.py b/tabfm/src/pytorch/peft.py
+new file mode 100644
+index 0000000..a27e244
+--- /dev/null
++++ b/tabfm/src/pytorch/peft.py
+@@ -0,0 +1,118 @@
++# Copyright 2026 Google LLC
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++"""Parameter-selection hook for PEFT-style finetuning of the PyTorch TabFM
++(ttc diagscale fork addition, mirroring the tabpfn fork's finetuning/peft.py).
++
++select_trainable() decides which parameters a finetuning optimizer sees;
++everything else is frozen (requires_grad=False).
++
++Modes:
++    full       all parameters, requires_grad untouched (plain full finetuning)
++    regex      parameters whose fully-qualified name matches cfg["pattern"]
++    diagscale  inject a fresh per-(head,dim) multiplier 1+delta on the query of
++               every MultiheadAttention whose MODULE name matches
++               cfg["pattern"], then train ONLY the deltas. delta is
++               zero-initialized so injection is behavior-preserving (the
++               wrapped model reproduces the pretrained model exactly until
++               training moves delta). The multiplier is applied to the final
++               query right before SDPA (after RoPE / q-RMSNorm /
++               per_dim_scale; SDPA runs at scale=1.0), so it is literally a
++               learned diagonal similarity metric: q̃·k = qᵀ diag(1+δ) k.
++
++Useful patterns (module names of the released TabFM v1.0.0):
++    "."                  all 42 attention modules (53,760 delta params)
++    r"^col_embedder\\."   the FIRST column embedder only — the most upstream
++                         attention that reads the training set (it embeds each
++                         feature's distribution by attending over train rows);
++                         6 modules, 1,536 delta params.
++"""
++from __future__ import annotations
++
++import logging
++import re
++from typing import Any
++
++import torch
++
++from tabfm.src.pytorch.model import MultiheadAttention
++
++logger = logging.getLogger(__name__)
++
++
++def inject_diagscale(model: torch.nn.Module, pattern: str) -> int:
++  """Register a zero-init diag_delta [nhead, hd] on every MultiheadAttention
++  whose module name matches `pattern`. In-place; returns the number injected.
++
++  delta is created float32 regardless of the backbone dtype (the forward casts
++  1+delta to the compute dtype), so tiny optimizer updates are not lost to
++  bf16 rounding. No RNG needed (deterministic zero-init).
++  """
++  rx = re.compile(pattern)
++  targets = [(n, m) for n, m in model.named_modules()
++             if isinstance(m, MultiheadAttention) and rx.search(n)]
++  for name, mod in targets:
++    if mod.diag_delta is not None:
++      raise ValueError(f"diagscale already injected at {name!r}")
++    ref = mod.per_dim_scale
++    mod.diag_delta = torch.nn.Parameter(
++        torch.zeros(mod.nhead, mod.hd, device=ref.device, dtype=torch.float32))
++  return len(targets)
++
++
++def select_trainable(
++    model: torch.nn.Module,
++    mode: str = "full",
++    **cfg: Any,
++) -> list[torch.nn.Parameter]:
++  """Freeze/unfreeze `model`'s parameters per `mode`; return the trainables."""
++  named = list(model.named_parameters())
++  n_total = sum(p.numel() for _, p in named)
++
++  if mode == "full":
++    selected = [p for _, p in named]  # requires_grad untouched
++  elif mode == "diagscale":
++    n_injected = inject_diagscale(model, pattern=cfg["pattern"])
++    if n_injected == 0:
++      raise ValueError(
++          f"finetune_mode='diagscale' (cfg={cfg}) matched 0 MultiheadAttention modules")
++    selected = []
++    for name, param in model.named_parameters():  # re-enumerate: deltas now exist
++      train = name.endswith(".diag_delta")
++      param.requires_grad_(train)
++      if train:
++        selected.append(param)
++    if not selected:
++      raise ValueError(
++          f"finetune_mode='diagscale' injected {n_injected} module(s) but selected 0 params")
++    logger.info("finetune_mode=diagscale: injected %d attention module(s)", n_injected)
++  elif mode == "regex":
++    rx = re.compile(cfg["pattern"])
++    selected = []
++    for name, param in named:
++      train = rx.search(name) is not None
++      param.requires_grad_(train)
++      if train:
++        selected.append(param)
++    if not selected:
++      raise ValueError(f"finetune_mode='regex' (cfg={cfg}) selected 0 parameters")
++  else:
++    raise ValueError(f"unknown finetune_mode {mode!r} (full | regex | diagscale)")
++
++  n_selected = sum(p.numel() for p in selected)
++  msg = (f"finetune_mode={mode}: trainable {n_selected:,} / {n_total:,} params "
++         f"({100 * n_selected / n_total:.4f}%)")
++  logger.info(msg)
++  print(f"[tabfm.pytorch.peft] {msg}", flush=True)  # visibility in job logs
++  return selected
+diff --git a/tabfm/src/pytorch/peft_test.py b/tabfm/src/pytorch/peft_test.py
+new file mode 100644
+index 0000000..73f4547
+--- /dev/null
++++ b/tabfm/src/pytorch/peft_test.py
+@@ -0,0 +1,125 @@
++# Copyright 2026 Google LLC
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++import unittest
++
++import torch
++
++from tabfm.src.pytorch import peft
++from tabfm.src.pytorch.model import MultiheadAttention, TabFM
++
++
++def _tiny_model(seed=0):
++  torch.manual_seed(seed)
++  m = TabFM(
++      embed_dim=16, max_classes=10, col_num_blocks=2, col_nhead=2,
++      col_num_inds=8, row_num_blocks=2, row_nhead=2, row_num_cls=4,
++      icl_num_blocks=2, icl_nhead=2, ff_factor=2, feature_group_size=3,
++      is_classifier=True)
++  # The released checkpoints have non-trivial weights; randomize the zeros-init
++  # params so the identity test is not trivially passing on zero activations.
++  with torch.no_grad():
++    for p in m.parameters():
++      if (p == 0).all():
++        p.normal_(0, 0.02)
++  m.eval()
++  return m
++
++
++def _dummy_batch(seed=0):
++  g = torch.Generator().manual_seed(seed)
++  x = torch.randn(2, 6, 5, generator=g)
++  y = torch.randint(0, 3, (2, 6), generator=g)
++  train_size = torch.tensor([4, 4])
++  return x, y, train_size
++
++
++class PeftTest(unittest.TestCase):
++
++  def test_injection_is_identity_at_init(self):
++    """Zero-init delta must not change the forward output at all."""
++    m = _tiny_model()
++    x, y, train_size = _dummy_batch()
++    with torch.no_grad():
++      before = m(x, y, train_size)
++    n = peft.inject_diagscale(m, pattern=".")
++    self.assertGreater(n, 0)
++    with torch.no_grad():
++      after = m(x, y, train_size)
++    torch.testing.assert_close(before, after, rtol=0, atol=0)
++
++  def test_select_trainable_diagscale_only_deltas(self):
++    m = _tiny_model()
++    n_attn = sum(1 for _, mod in m.named_modules()
++                 if isinstance(mod, MultiheadAttention))
++    selected = peft.select_trainable(m, mode="diagscale", pattern=".")
++    self.assertEqual(len(selected), n_attn)
++    for name, p in m.named_parameters():
++      self.assertEqual(p.requires_grad, name.endswith(".diag_delta"), name)
++    n_expected = sum(mod.nhead * mod.hd for _, mod in m.named_modules()
++                     if isinstance(mod, MultiheadAttention))
++    self.assertEqual(sum(p.numel() for p in selected), n_expected)
++
++  def test_scoped_pattern_matches_subset(self):
++    m = _tiny_model()
++    n = peft.inject_diagscale(m, pattern=r"^col_embedder\.")
++    # col_embedder: col_num_blocks x (mab1, mab2) = 4 attention modules.
++    self.assertEqual(n, 4)
++    injected = [name for name, _ in m.named_parameters()
++                if name.endswith(".diag_delta")]
++    self.assertEqual(len(injected), 4)
++    for name in injected:
++      self.assertTrue(name.startswith("col_embedder."), name)
++
++  def test_gradient_flows_to_delta_and_moves_output(self):
++    m = _tiny_model()
++    selected = peft.select_trainable(m, mode="diagscale", pattern=".")
++    x, y, train_size = _dummy_batch()
++    out = m(x, y, train_size)
++    loss = out.square().mean()
++    loss.backward()
++    grads = [p.grad for p in selected]
++    self.assertTrue(all(g is not None for g in grads))
++    self.assertTrue(any(g.abs().sum() > 0 for g in grads))
++    # A non-zero delta must change the output (the multiplier is live).
++    with torch.no_grad():
++      before = m(x, y, train_size)
++      for p in selected:
++        p.add_(0.05)
++      after = m(x, y, train_size)
++    self.assertGreater((before - after).abs().max().item(), 0)
++
++  def test_full_mode_untouched(self):
++    m = _tiny_model()
++    selected = peft.select_trainable(m, mode="full")
++    self.assertEqual(len(selected), len(list(m.parameters())))
++    self.assertTrue(all(p.requires_grad for p in m.parameters()))
++
++  def test_double_injection_raises(self):
++    m = _tiny_model()
++    peft.inject_diagscale(m, pattern=".")
++    with self.assertRaises(ValueError):
++      peft.inject_diagscale(m, pattern=".")
++
++  def test_state_dict_roundtrip_before_injection(self):
++    """Checkpoint loading (strict) must be unaffected when nothing is injected."""
++    m1, m2 = _tiny_model(seed=1), _tiny_model(seed=2)
++    m2.load_state_dict(m1.state_dict(), strict=True)
++    x, y, train_size = _dummy_batch()
++    with torch.no_grad():
++      torch.testing.assert_close(m1(x, y, train_size), m2(x, y, train_size))
++
++
++if __name__ == "__main__":
++  unittest.main()
+-- 
+2.34.1
+

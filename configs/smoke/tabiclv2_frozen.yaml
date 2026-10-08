@@ -1,0 +1,10 @@
+# Smoke test for configs/tabiclv2/frozen.yaml: debug mode (diabetes + airfoil_self_noise),
+# identical hyperparameters.
+model: tabiclv2-ft
+mode: debug
+tag_suffix: smoke_tabiclv2_frozen
+hyperparameters:
+  ft_epochs: 0
+  n_estimators: 8
+  use_amp: false
+  use_fa3: false

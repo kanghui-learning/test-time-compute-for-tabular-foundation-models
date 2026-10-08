@@ -1,0 +1,11 @@
+.ref/
+runs/
+logs/
+third_party/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+/data/
+hf_results/
+AutogluonModels/

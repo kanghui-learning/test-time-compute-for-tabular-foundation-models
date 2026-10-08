@@ -1,0 +1,11 @@
+# TabPFN-3 full finetuning (+25 Elo).
+# All trainable weights, learning rate 1e-6, up to 30 epochs. The finetuner's defaults give the
+# remaining protocol: 2 views for finetuning and validation, 8 views at deployment, AdamW weight
+# decay 0.01, early-stopping patience 8, fallback to the pretrained weights if no epoch improves.
+model: tabpfn3-ft
+mode: full
+tag_suffix: full_ft
+hyperparameters:
+  ft_mode: full
+  ft_lr: 1.0e-6
+  ft_epochs: 30

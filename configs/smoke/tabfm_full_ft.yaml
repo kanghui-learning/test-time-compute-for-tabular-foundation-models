@@ -1,0 +1,14 @@
+# Smoke test for configs/tabfm/full_ft.yaml: debug mode (diabetes + airfoil_self_noise),
+# identical hyperparameters.
+model: tabfm-ft
+mode: debug
+tag_suffix: smoke_tabfm_full_ft
+raise_on_failure: false
+hyperparameters:
+  ft_mode: full
+  ft_lr: 0.0001
+  ft_wd: 0.01
+  ft_epochs: 30
+  ft_patience: 8
+  n_estimators: 32
+  ft_n_est_finetune: 2

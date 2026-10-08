@@ -1,0 +1,6 @@
+# Smoke test for configs/tabfm/frozen.yaml: debug mode (diabetes + airfoil_self_noise),
+# identical hyperparameters.
+model: tabfm
+mode: debug
+tag_suffix: smoke_tabfm_frozen
+hyperparameters: {}

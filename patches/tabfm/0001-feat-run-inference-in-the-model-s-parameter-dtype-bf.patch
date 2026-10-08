@@ -1,0 +1,50 @@
+From 45429b7a129d2a50381aa86330237677dcff11c9 Mon Sep 17 00:00:00 2001
+From: Kanghui Ning <>
+Date: Sun, 5 Jul 2026 17:39:13 +0000
+Subject: [PATCH 1/3] feat: run inference in the model's parameter dtype (bf16
+ support)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Two changes to the PyTorch predict path so a bf16-cast backbone runs
+end-to-end (halves activation memory; lets wide datasets like APSFailure
+76k x 170 fit a single 80GB GPU at full context):
+
+- _predict_step_pytorch: cast the input batch to the model's parameter
+  dtype instead of hardcoding float32 (backward-compatible: an fp32
+  model still gets fp32 inputs)
+- return out_t.float().cpu().numpy() — numpy has no bfloat16, so cast
+  logits back to fp32 before leaving torch
+---
+ tabfm/src/classifier_and_regressor.py | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/tabfm/src/classifier_and_regressor.py b/tabfm/src/classifier_and_regressor.py
+index a785057..76c6514 100644
+--- a/tabfm/src/classifier_and_regressor.py
++++ b/tabfm/src/classifier_and_regressor.py
+@@ -1793,7 +1793,10 @@ def _predict_step_pytorch(
+ 
+   device = next(model.parameters()).device
+ 
+-  X_t = torch.from_numpy(X_batch).to(device, dtype=torch.float32)
++  # Match the model's parameter dtype instead of hard-coding fp32, so a bf16-cast backbone runs
++  # end-to-end in bf16 (halves activation memory -> large/WIDE datasets fit a single GPU at full
++  # context). Backward-compatible: an fp32 model still gets fp32 inputs. [ttc: TabFMModel bf16]
++  X_t = torch.from_numpy(X_batch).to(device, dtype=next(model.parameters()).dtype)
+   y_t = torch.from_numpy(y_batch).to(device)
+   if y_t.dtype == torch.float64:
+     y_t = y_t.to(torch.float32)
+@@ -1819,7 +1822,7 @@ def _predict_step_pytorch(
+   with torch.no_grad():
+     out_t = model(X_t, y_t, train_size_t, cat_mask=cat_mask_t, d=d_t)
+ 
+-  return out_t.cpu().numpy()
++  return out_t.float().cpu().numpy()  # bf16 -> fp32 before numpy (numpy has no bfloat16) [ttc: TabFMModel bf16]
+ 
+ 
+ # ---------------------------------------------------------------------------
+-- 
+2.34.1
+

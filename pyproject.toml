@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tfm-ttc"
+version = "0.1.0"
+description = "Test-time compute for tabular foundation models (TabPFN-3, TabICLv2, TabFM) on TabArena"
+requires-python = ">=3.11,<3.12"
+# The patched backbones (tabpfn, tabicl, tabfm) and the pinned benchmark (tabarena@abd24c7,
+# which pulls autogluon>=1.5,<1.6) are NOT listed here: they are installed from upstream
+# + patches/ by scripts/install_forks.sh. See envs/environment.yml for the full recipe.
+dependencies = [
+    "numpy>=1.25",
+    "pandas>=2.0",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "pyyaml",
+    "torch==2.9.1",
+    "lightgbm>=4.0",
+    "huggingface_hub>=0.23",
+    "openml>=0.14.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ttc*"]
